@@ -2,8 +2,8 @@ from appBackend.db.session import Base
 from sqlalchemy import Column, Integer, String, Boolean
 
 
-class Users(Base):
-    __tablename__ = 'users'
+class OurUsers(Base):
+    __tablename__ = 'our_users'
 
     id = Column(Integer, primary_key=True)
     email = Column(String, unique=True, index=True)

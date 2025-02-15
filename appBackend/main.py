@@ -1,14 +1,10 @@
 from fastapi import FastAPI
 
-from appBackend.db.session import create_db_and_tables
 from appBackend.routers import auth
+from appBackend.db.session import Base, engine
 
 app = FastAPI()
-
-
-@app.on_event("startup")
-async def startup_event():
-    create_db_and_tables()
-
-
+Base.metadata.create_all(bind=engine)
 app.include_router(auth.router)
+
+

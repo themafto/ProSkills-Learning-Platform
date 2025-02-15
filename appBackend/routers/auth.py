@@ -1,35 +1,31 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from appBackend.db.session import SessionLocal
-from appBackend.models.users import Users
+from starlette import status
+
+from appBackend.core.security import bcrypt_context
+from appBackend.db.session   import get_db
+from appBackend.models.ourusers import OurUsers
 from appBackend.schemas.user import CreateUserRequest
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try: yield db
-    finally:
-        db.close()
 
 
-# не выводит ничего, а точнее пустой список
-@router.get("/all_users")
-async def get_all_users(db: Session = Depends(get_db)):
-    users = db.query(Users).all()
-    return users
-
-@router.post('/auth/')
-async def create_user(create_user_request: CreateUserRequest):
-    create_user_model = Users(
+@router.post('/auth/', status_code=status.HTTP_201_CREATED)
+async def create_user(
+        create_user_request: CreateUserRequest,
+        db: Session = Depends(get_db)):
+    create_user_model = OurUsers(
         email=create_user_request.email,
         username=create_user_request.username,
-        hashed_password=create_user_request.password,
+        hashed_password=bcrypt_context.hash(create_user_request.password),
         first_name=create_user_request.first_name,
         last_name=create_user_request.last_name,
         role=create_user_request.role,
         is_active=True
     )
+    db.add(create_user_model)
+    db.commit()
+    db.refresh(create_user_model)
     return create_user_model

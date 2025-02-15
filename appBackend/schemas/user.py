@@ -7,14 +7,3 @@ class CreateUserRequest(BaseModel):
     first_name: str
     last_name: str
     role: str
-
-
-    class Config:
-        orm_mode = True
-        schema_extra = {
-            "example": {
-                "name": "<NAME>",
-                "email": "<EMAIL>",
-                'password': '<PASSWORD>',
-            }
-        }
