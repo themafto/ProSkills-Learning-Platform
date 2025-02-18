@@ -29,7 +29,8 @@ async def create_user(
         create_user_request: CreateUserRequest,
         db: Session = Depends(get_db)):
 
-    check_if_user_exists(db, create_user_request.username, create_user_request.email)
+    check_if_user_exists(db, create_user_request.email, create_user_request.username,)
+
 
     create_user_model = OurUsers(
         email=create_user_request.email,
