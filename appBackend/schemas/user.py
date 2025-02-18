@@ -1,14 +1,14 @@
 import re
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class CreateUserRequest(BaseModel):
     username: str = Field(min_length=3, max_length=20)
     email: str
     password: str = Field(min_length=8, max_length=128)
-    first_name: str
-    last_name: str
+    first_name: str | None = None
+    last_name: str | None = None
     role: str = Field(default='student')
 
     @field_validator('username')
@@ -28,3 +28,17 @@ class CreateUserRequest(BaseModel):
         if not re.search("[0-9]", v):
             raise ValueError('Password must contain at least one digit')
         return v
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserResponse(BaseModel):  # Output schema
+    id: int
+    email: str
+    username: str
+    first_name: str | None = None
+    last_name: str | None = None
+    role: str
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)

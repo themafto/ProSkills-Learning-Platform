@@ -16,7 +16,7 @@ bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/token')
 
 
-SECRET_KEY = 'a7c6df360291729a64a04dee33078576a2008b25c7e3e7f8cf3ee0a5a085616c'
+SECRET_KEY = 'a7c6df360291729a64a04dee33078576a2008b25c7e3e7f8cf3ee0a5a085616c'  # for testing #
 ALGORITHM = 'HS256'
 
 

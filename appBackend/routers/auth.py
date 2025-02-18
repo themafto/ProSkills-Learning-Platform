@@ -1,17 +1,19 @@
 from datetime import timedelta
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy.testing.pickleable import User
 
 from starlette import status
+
 
 from appBackend.core.security import bcrypt_context, authenticate_user, create_access_token, get_current_user_jwt
 from appBackend.db.session   import get_db
 from appBackend.models.ourusers import OurUsers
 from appBackend.schemas.token import Token
-from appBackend.schemas.user import CreateUserRequest
+from appBackend.schemas.user import CreateUserRequest, UserResponse
 from appBackend.services.user_service import check_if_user_exists
 
 router = APIRouter(
@@ -82,4 +84,12 @@ async def register_teacher(
     db.commit()
     db.refresh(create_user_model)
     return create_user_model
+
+
+@router.get("/users/", response_model=List[UserResponse], status_code=status.HTTP_200_OK)
+async def get_all_users(
+        db: Session = Depends(get_db),
+):
+    users = db.query(OurUsers).all()
+    return users
 
