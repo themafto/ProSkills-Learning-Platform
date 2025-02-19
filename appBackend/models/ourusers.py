@@ -7,7 +7,7 @@ from sqlalchemy import Column, Integer, String, Boolean
 class OurUsers(Base):
     __tablename__ = 'our_users'
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=False)
     first_name = Column(String, nullable=False)
