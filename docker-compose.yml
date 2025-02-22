@@ -24,5 +24,18 @@ services:
     networks:
       - my_network
 
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8002:8080"
+    depends_on:
+      - db
+    networks:
+      - my_network
+
+
 networks:
   my_network:
+
+

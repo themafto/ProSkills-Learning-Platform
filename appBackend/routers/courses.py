@@ -8,7 +8,8 @@ from starlette import status
 
 from appBackend.core.security import get_current_user_jwt
 from appBackend.db.session import get_db
-from appBackend.schemas.course import Course, CourseCreate, CourseBase, CourseUpdate, CourseResponse
+from appBackend.models import Course
+from appBackend.schemas.course import CourseCreate, CourseBase, CourseUpdate, CourseResponse
 
 router = APIRouter(
     prefix='/courses',
@@ -37,14 +38,15 @@ async def create_course(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creating course: {e}")
     db.refresh(course)
-    return course
 
-@router.get("/courses/{course_id}", response_model=Course, status_code=status.HTTP_200_OK)
+    return CourseResponse.model_validate(course.to_dict())
+
+@router.get("/courses/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
 async def get_courses(db: Session = Depends(get_db)):
     courses = db.query(CourseBase).all()
     return courses
 
-@router.put("/courses/update", response_model=Course, status_code=status.HTTP_200_OK)
+@router.put("/courses/update", response_model=CourseResponse, status_code=status.HTTP_200_OK)
 async def update_course(
         course_id: int,
         update_course_request: CourseUpdate,

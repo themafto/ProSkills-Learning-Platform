@@ -1,10 +1,9 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, ARRAY
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from appBackend.db.session import Base
+from appBackend.models.basemodel import BaseModel
 
-
-class Course(Base):
+class Course(BaseModel):
     __tablename__ = 'courses'
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)

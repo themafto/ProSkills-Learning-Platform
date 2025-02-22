@@ -19,7 +19,8 @@ class CourseResponse(BaseModel):
     lessons_duration: int
     teacher_id: int
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        orm_mode = True
 
 class CourseCreate(CourseBase):
     files: Optional[List[str]] = None
@@ -38,8 +39,7 @@ class Course(CourseBase):
     id: int
     teacher_id: int
 
-    class Config:
-        orm_mode = True
+
 
 class CourseUpdate(BaseModel):
     title: Optional[str] = None

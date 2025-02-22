@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form, Body
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
@@ -49,14 +49,16 @@ async def create_user(
 
 
 ### ROUTE FOR LOGIN ###
-class LoginRequest(BaseModel):
+class UserLogin(BaseModel):  # Create a Pydantic model for JSON request
     email: str
     password: str
 @router.post('/token', response_model=Token, status_code=status.HTTP_200_OK)
 async def login_for_access_token(
-        login_data: LoginRequest,
+        login_data: UserLogin,
         db: Session = Depends(get_db)):
+    print('Before checking user')
     user = authenticate_user(login_data.email, login_data.password, db)
+    print('After checking user')
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -64,9 +66,8 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     token = create_access_token(user.email, user.id, user.role, timedelta(minutes=20))
-
+    print('after creating token')
     return {'access_token': token, 'token_type': 'Bearer'}
-
 @router.post('/register/teacher', status_code=status.HTTP_201_CREATED)
 async def register_teacher(
         create_user_request: CreateUserRequest,
