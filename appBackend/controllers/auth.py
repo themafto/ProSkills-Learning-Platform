@@ -1,17 +1,15 @@
 from datetime import timedelta
-from typing import Annotated, List
+from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Form, Body
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy.testing.pickleable import User, EmailUser
 
 from starlette import status
 
 
 from appBackend.core.security import bcrypt_context, authenticate_user, create_access_token, get_current_user_jwt
-from appBackend.db.session   import get_db
+from appBackend.database import get_db
 from appBackend.models.ourusers import OurUsers
 from appBackend.schemas.token import Token
 from appBackend.schemas.user import CreateUserRequest, UserResponse

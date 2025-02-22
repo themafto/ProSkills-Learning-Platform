@@ -1,9 +1,7 @@
 from sqlalchemy.orm import relationship
 
-from appBackend.db.session import Base
-from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, text
-
-
+from appBackend.database import Base
+from sqlalchemy import Column, Integer, String, Boolean
 
 
 class OurUsers(Base):

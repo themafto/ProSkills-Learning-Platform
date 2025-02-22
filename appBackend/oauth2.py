@@ -1,14 +1,14 @@
-from datetime import timedelta, datetime, timezone
+from datetime import timezone, datetime, timedelta
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from passlib.context import CryptContext
 from jose import jwt, JWTError
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from starlette import status
 
-from appBackend.db.session import get_db
-from appBackend.models.ourusers import OurUsers
+from appBackend.dependencies.getdb import get_db
+from appBackend.models import OurUsers
 
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
@@ -58,5 +58,3 @@ async def get_current_user_jwt(db: Session = Depends(get_db), token: str = Depen
     except JWTError:
         return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                              detail='Incorrect email or password')
-
-

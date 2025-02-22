@@ -1,13 +1,10 @@
-from typing import List
-
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.sync import update
 from starlette import status
 
 from appBackend.core.security import get_current_user_jwt
-from appBackend.db.session import get_db
+from appBackend.database import get_db
 from appBackend.models import Course
 from appBackend.schemas.course import CourseCreate, CourseBase, CourseUpdate, CourseResponse
 
