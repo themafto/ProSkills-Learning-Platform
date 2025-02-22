@@ -3,10 +3,10 @@ from fastapi.params import Depends
 from sqlalchemy.orm import Session
 from starlette import status
 
-from appBackend.core.security import get_current_user_jwt
-from appBackend.database import get_db
-from appBackend.models import Course
-from appBackend.schemas.course import CourseCreate, CourseBase, CourseUpdate, CourseResponse
+from backend.dependencies.getdb import get_db
+from backend.models import Course
+from backend.oauth2 import get_current_user_jwt
+from backend.schemas.course import CourseCreate, CourseUpdate, CourseResponse
 
 router = APIRouter(
     prefix='/courses',
@@ -39,9 +39,11 @@ async def create_course(
     return CourseResponse.model_validate(course.to_dict())
 
 @router.get("/courses/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
-async def get_courses(db: Session = Depends(get_db)):
-    courses = db.query(CourseBase).all()
-    return courses
+async def get_course_by_id(db: Session = Depends(get_db)):
+    course = db.query(Course).filter(Course.id == Course.id).first()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+    return course
 
 @router.put("/courses/update", response_model=CourseResponse, status_code=status.HTTP_200_OK)
 async def update_course(
@@ -71,8 +73,7 @@ async def update_course(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error updating course: {e}")
-
-    return course.model_dump()
+    return update_data
 
 
 

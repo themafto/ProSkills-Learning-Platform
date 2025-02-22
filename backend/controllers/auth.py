@@ -7,13 +7,12 @@ from sqlalchemy.orm import Session
 
 from starlette import status
 
-
-from appBackend.core.security import bcrypt_context, authenticate_user, create_access_token, get_current_user_jwt
-from appBackend.database import get_db
-from appBackend.models.ourusers import OurUsers
-from appBackend.schemas.token import Token
-from appBackend.schemas.user import CreateUserRequest, UserResponse
-from appBackend.services.user_service import check_if_user_exists
+from backend.dependencies.getdb import get_db
+from backend.models.ourusers import OurUsers
+from backend.oauth2 import bcrypt_context, authenticate_user, create_access_token, get_current_user_jwt
+from backend.schemas.token import Token
+from backend.schemas.user import CreateUserRequest, UserResponse
+from backend.services.user_service import check_if_user_exists
 
 router = APIRouter(
     prefix='/auth',

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, ARRAY
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from appBackend.models.basemodel import BaseModel
+from backend.models.basemodel import BaseModel
 
 class Course(BaseModel):
     __tablename__ = 'courses'

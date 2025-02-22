@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from appBackend.models.ourusers import OurUsers
+from backend.models.ourusers import OurUsers
 
 
 def check_if_user_exists(db: Session, username: str, email: str, create_user_request=None):

@@ -7,8 +7,8 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from starlette import status
 
-from appBackend.dependencies.getdb import get_db
-from appBackend.models import OurUsers
+from backend.dependencies.getdb import get_db
+from backend.models import OurUsers
 
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
