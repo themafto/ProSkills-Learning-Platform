@@ -18,7 +18,7 @@ oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/token')
 
 SECRET_KEY = 'a7c6df360291729a64a04dee33078576a2008b25c7e3e7f8cf3ee0a5a085616c'  # for testing #
 ALGORITHM = 'HS256'
-
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 ### Check if user is in our DATABASE ###
 def authenticate_user(email: str, password: str, db):
@@ -31,12 +31,17 @@ def authenticate_user(email: str, password: str, db):
 
 
 ### Create a JWT token for user ###
-def create_access_token(email: str, user_id: int, user_role: str, expires_delta: timedelta):
-    encode = {'sub': email, 'id': user_id, 'role': user_role}
+def create_access_token(email: str, user_id: int, user_role: str, expires_delta: timedelta) -> object:
+    encode = {'sub': email, 'id': user_id, 'role': user_role, 'token_type': 'access_token'}
     expire = datetime.now(timezone.utc) + expires_delta
     encode.update({'exp': expire})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
+def create_refresh_token( user_id: int):
+    encode = {'id': user_id, 'token_type': 'refresh_token'}
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    encode.update({'exp': expire})
+    return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
 ### Checking if the JWT Token of our user is correct ###
 async def get_current_user_jwt(db: Session = Depends(get_db), token: str = Depends(oauth2_bearer)):

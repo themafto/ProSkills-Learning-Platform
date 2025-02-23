@@ -1,15 +1,17 @@
 from datetime import timedelta
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Cookie
+from jose import jwt
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from starlette import status
-
+from fastapi.responses import JSONResponse
 from backend.dependencies.getdb import get_db
 from backend.models.ourusers import OurUsers
-from backend.oauth2 import bcrypt_context, authenticate_user, create_access_token, get_current_user_jwt
+from backend.oauth2 import bcrypt_context, authenticate_user, create_access_token, get_current_user_jwt, \
+    create_refresh_token, SECRET_KEY, ALGORITHM
 from backend.schemas.token import Token
 from backend.schemas.user import CreateUserRequest, UserResponse
 from backend.services.user_service import check_if_user_exists
@@ -62,9 +64,55 @@ async def login_for_access_token(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    token = create_access_token(user.email, user.id, user.role, timedelta(minutes=20))
-    print('after creating token')
-    return {'access_token': token, 'token_type': 'Bearer'}
+
+    access_token = create_access_token(user.email, user.id, user.role, timedelta(minutes=20))
+    refresh_token = create_refresh_token(user.id)
+
+    print('after creating token and refresh token')
+    response = JSONResponse(content={"access_token": access_token,"refresh_token": refresh_token, "token_type": "Bearer"})
+    return response
+
+
+
+@router.post("/refresh", response_model=Token, status_code=status.HTTP_200_OK)
+async def refresh_token_get(
+        refresh_token: str = Cookie(None),
+        db: Session = Depends(get_db)):
+
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id:str  = payload.get("id")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(401, "Refresh token expired")
+    except jwt.JWTError:
+        raise HTTPException(401, "Invalid refresh token")
+
+    try:
+        user_id_int = int(user_id)  # Convert the incoming user_id string to an integer
+        user_db = db.query(OurUsers).filter(OurUsers.id == user_id_int).first()  # Query again using the integer
+
+        if not user_db:  # recheck since the id may not have been a proper integer corresponding to a real record
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        new_access_token = create_access_token(  # Presumed function not included in question.
+            email=str(user_db.email),
+            user_id=user_id_int,
+            user_role=str(user_db.role),
+            expires_delta=timedelta(minutes=20)
+        )
+        return {"access_token": new_access_token, "token_type": "bearer"}
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail="Invalid user ID format")  # More appropriate
+    except Exception as e:
+        # Log the error for debugging.!!!!! Do not expose it in production without sanitation. !!!!
+        print(f"An unexpected error occurred: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Internal server error")  # generic
+
+
+
+
 @router.post('/register/teacher', status_code=status.HTTP_201_CREATED)
 async def register_teacher(
         create_user_request: CreateUserRequest,
@@ -109,7 +157,6 @@ async def register_teacher(
     db.commit()
     db.refresh(create_user_model)
     return create_user_model
-
 
 
 @router.get("/users/", response_model=List[UserResponse], status_code=status.HTTP_200_OK)

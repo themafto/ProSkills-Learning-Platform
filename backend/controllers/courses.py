@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.params import Depends
+from fastapi.params import Depends, Path
 from sqlalchemy.orm import Session
 from starlette import status
 
@@ -38,22 +38,21 @@ async def create_course(
 
     return CourseResponse.model_validate(course.to_dict())
 
-@router.get("/courses/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
+@router.get("/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
 async def get_course_by_id(db: Session = Depends(get_db)):
     course = db.query(Course).filter(Course.id == Course.id).first()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
     return course
 
-@router.put("/courses/update", response_model=CourseResponse, status_code=status.HTTP_200_OK)
+@router.put("/update/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
 async def update_course(
         course_id: int,
         update_course_request: CourseUpdate,
         db: Session = Depends(get_db),
         current_user: dict = Depends(get_current_user_jwt)):
 
-    if current_user.get('role') != 'teacher':
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
 
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
@@ -73,7 +72,20 @@ async def update_course(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error updating course: {e}")
-    return update_data
+    return course
 
+@router.get("/get_all" )
+async def get_all_courses(db: Session = Depends(get_db)):
+    courses = db.query(Course).all()
+    if not courses:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Courses not found")
+    return courses
 
-
+@router.delete("/delete/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
+async def delete_course(
+        course_id: int,
+        db: Session = Depends(get_db)):
+    course = db.query(Course).filter(Course.id == course_id).delete()
+    if not course:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+    return course
