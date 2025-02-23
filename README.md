@@ -33,7 +33,8 @@ If you installed additional packages to add them to application use this command
 pip freeze > requirements.txt
 ```
 
-💡 _This way we ensure track of all packages we installed_
+> [!TIP]
+> This way we ensure track of all packages we installed
 
 
 <br>
@@ -46,7 +47,8 @@ This command will make linters run before each commit and help you to refactor c
 pre-commit install
 ```
 
-💡 _Run it only once and all needed dependencies will be installed_
+> [!TIP]
+> Run it only once and all needed dependencies will be installed
 
 <br>
 
@@ -56,7 +58,8 @@ This command will help you when you want to run linters, but do not want to crea
 pre-commit run --all-files
 ```
 
-💡 _Can be run multiple times to ensure code quality_
+> [!TIP]
+> Can be run multiple times to ensure code quality
 
 <br>
 
@@ -89,8 +92,8 @@ MIGRATION_DOWNGRADE_TARGET=63017c98c3da
 
 ### 🔹 What is Docker?
 
-> Docker is a platform that helps developers create, deploy, and run applications in isolated environments called containers.
-> Containers bundle everything an application needs, ensuring it works the same way across different systems.
+> [!NOTE]
+> Docker is a platform that helps developers create, deploy, and run applications in isolated environments called containers. <br> Containers bundle everything an application needs, ensuring it works the same way across different systems.
 
 ### 🔹 Why Use Docker?
 
@@ -101,12 +104,14 @@ MIGRATION_DOWNGRADE_TARGET=63017c98c3da
 
 ### 📦 Simplifying Dependencies with Containers
 
+> [!NOTE]
 > Containers package all required dependencies, eliminating the need for local installations.
 > For example, instead of manually installing and configuring a database on your local machine,
 > you can run it inside a container, ensuring a consistent and hassle-free setup.
 
 ### 🔹 What is Docker Compose?
 
+> [!NOTE]
 > Docker Compose is a tool that allows you to manage multi-container applications.
 > Instead of running separate docker run commands, you can define everything in a docker-compose.yml file
 > and start all services with a single command.
@@ -189,13 +194,13 @@ docker compose up --build
 
 ✅ Alembic inspects SQLAlchemy models and generates migration code(script) automatically.
 
-> 💡 It is obligatory to import our models so alembic will see them <br>
+> [!TIP]
+> It is obligatory to import our models so alembic will see them <br>
 > You can check a guide in ```app/models/__init__.py``` file
 
 
 
-> 🔴 Important <br>
->
+> [!IMPORTANT]
 > We should keep track of all migration scripts so we will be able to upgrade or downgrade correctly our production database <br>
 >
 > For instance, during the implementation of a feature, we created five additional migration files as part of local testing. <br>
