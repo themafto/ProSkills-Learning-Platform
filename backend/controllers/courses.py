@@ -1,9 +1,12 @@
+from typing import List
+
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends, Path
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.functions import current_user
 from starlette import status
 
+from backend import schemas
 from backend.dependencies.getdb import get_db
 from backend.models import Course
 from backend.oauth2 import get_current_user_jwt
@@ -76,12 +79,10 @@ async def update_course(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error updating course: {e}")
     return course
 
-@router.get("/get_all" )
+@router.get("/get_all", response_model=List[schemas.course] )
 async def get_all_courses(db: Session = Depends(get_db)):
     courses = db.query(Course).all()
-    if not courses:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Courses not found")
-    return courses
+    return courses 
 
 @router.delete("/delete/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
 async def delete_course(
