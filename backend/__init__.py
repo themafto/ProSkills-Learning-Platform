@@ -1,0 +1,2 @@
+def core():
+    return None
