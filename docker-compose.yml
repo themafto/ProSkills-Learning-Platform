@@ -3,7 +3,7 @@ services:
     image: postgres:15
     restart: on-failure
     ports:
-      - '6500:5432'
+      - '5432:5432'
     environment: &db-variables
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
@@ -35,6 +35,28 @@ services:
     networks:
       - app_network
 
+  alembic:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *db-variables
+      MAKE_MIGRATIONS: ${MAKE_MIGRATIONS:-false}
+      MAKE_MIGRATION_DOWNGRADE: ${MAKE_MIGRATION_DOWNGRADE:-false}
+      MIGRATION_DOWNGRADE_TARGET: ${MIGRATION_DOWNGRADE_TARGET:-63017c98c3da}
+    command: >
+      sh -c "[ "$MAKE_MIGRATIONS" = "true" ] && alembic revision --autogenerate -m 'auto detect changes';
+             [ "$MAKE_MIGRATION_DOWNGRADE" = "true" ] && alembic downgrade "$MIGRATION_DOWNGRADE_TARGET";
+             [ "$MAKE_MIGRATION_DOWNGRADE" != "true" ] && alembic upgrade head"
+    volumes:
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    networks:
+      - app_network
+
   app:
     build:
       context: .
@@ -50,20 +72,7 @@ services:
     depends_on:
       - redis
       - db
-    networks:
-      - app_network
-
-  alembic:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      <<: *db-variables
-    command: >
-      sh -c "alembic upgrade head"
+      - alembic
     networks:
       - app_network
 
