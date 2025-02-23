@@ -1,41 +1,77 @@
-version: '3.8'
-
 services:
-  backend:
-    build:
-      context: ./
-      dockerfile: ./Dockerfile
-    ports:
-      - "8001:8001"
-    depends_on:
-      - db
-    env_file:
-      - .env
-    restart: always
-    networks:
-      - my_network
-
   db:
-    image: postgres
+    image: postgres:15
+    restart: on-failure
     ports:
-      - "5432:5432"
-    env_file:
-      - .env
+      - '6500:5432'
+    environment: &db-variables
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-fastapi}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
     networks:
-      - my_network
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  adminer:
-    image: adminer
-    restart: always
+  redis:
+    image: redis:7
+    restart: on-failure
     ports:
-      - "8002:8080"
+      - '6379:6379'
+    command: bash -c 'redis-server --requirepass ${REDIS_PASSWORD:-password}'
+    environment: &redis-variables
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-password}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+    volumes:
+      - cache:/data
+    networks:
+      - app_network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    container_name: fastapi_app
+    ports:
+      - "5001:5000"
+    environment:
+      <<:
+        - *db-variables
+        - *redis-variables
     depends_on:
+      - redis
       - db
     networks:
-      - my_network
+      - app_network
 
+  alembic:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *db-variables
+    command: >
+      sh -c "alembic upgrade head"
+    networks:
+      - app_network
+
+volumes:
+  postgres-db:
+  cache:
+    driver: local
 
 networks:
-  my_network:
-
-
+  app_network:
+    driver: bridge

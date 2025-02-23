@@ -1,0 +1,121 @@
+[33mcommit eb9f1870d99dd4dfc548666107cd8f3f639742ae[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mauth[m[33m, [m[1;31morg/auth[m[33m)[m
+Merge: c227fd3 04044a1
+Author: themafto <weqqe7@gmail.com>
+Date:   Sun Feb 23 14:06:57 2025 +0100
+
+    Merge org/main with --allow-unrelated-histories
+
+[33mcommit c227fd37e2865401c5f5404446e4a457f0db4fc6[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Sun Feb 23 13:58:00 2025 +0100
+
+    added refresh_token
+
+[33mcommit 04044a19e72e3ffbe6bb99477e40f296af19c54d[m[33m ([m[1;31morg/main[m[33m)[m
+Author: Vadym Volkov <vadymwork@Vadyms-MacBook-Pro.local>
+Date:   Sun Feb 23 14:57:27 2025 +0200
+
+    fix readme
+
+[33mcommit f6f86fa1ccca0a42e4ee01bbbb2b2e31a6f56e15[m
+Author: Vadym Volkov <vadymwork@Vadyms-MacBook-Pro.local>
+Date:   Sun Feb 23 14:34:46 2025 +0200
+
+    add Readme.me and make migrations easier to handle
+
+[33mcommit 197bf368c4ebb833f72ae0e409dae3573f7da7ca[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Sat Feb 22 16:23:44 2025 +0100
+
+    fixed
+
+[33mcommit d44b8708993eae1caeccaec643c44fea34e96e74[m[33m ([m[1;31morigin/Authentication[m[33m, [m[1;32mAuthentication[m[33m)[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Sat Feb 22 15:08:23 2025 +0100
+
+    refactor project for better infrastructure
+
+[33mcommit 49075e604b531328d0c0d26960e4373434f5a97d[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Sat Feb 22 15:08:20 2025 +0100
+
+    refactor project for better infrastructure
+
+[33mcommit 6c1df5c5132c16133f3d83c1582856807138942b[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Sat Feb 22 12:15:33 2025 +0100
+
+    fixed problems with creating course
+
+[33mcommit 654cd7596227ee588298a4289bf907073c671e88[m
+Author: Vadym Volkov <vadymwork@Vadyms-MacBook-Pro.local>
+Date:   Wed Feb 19 19:57:25 2025 +0200
+
+    fix python version
+
+[33mcommit e4d56a2787acf4735cdf36bfae33246681f3b01e[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Wed Feb 19 18:56:18 2025 +0100
+
+    changed user to --> email for login and auth, also added logic for course
+
+[33mcommit adb057514879416846ab5811ccf3221a43bd4999[m
+Author: Vadym Volkov <vadymwork@Vadyms-MacBook-Pro.local>
+Date:   Wed Feb 19 19:50:01 2025 +0200
+
+    init project
+
+[33mcommit 247601fc79f1a9184e1bd92c72b11745a768154a[m
+Author: Vadym Volkov <72186851+Wadosmp4@users.noreply.github.com>
+Date:   Wed Feb 19 19:28:14 2025 +0200
+
+    Initial commit
+
+[33mcommit 6d20e566ccd013673326f34e0c2da145a2f17e7a[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Tue Feb 18 18:58:10 2025 +0100
+
+    fixed 500 to 401 error when we creating user that already exist
+
+[33mcommit 2375855a26af0169de5297d3f18670b14db382c7[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Tue Feb 18 18:45:37 2025 +0100
+
+    Fixed problems
+    Added "GET" for getting all users
+
+[33mcommit 613171b7dd023e914cc7760cfe181fe02c5979ae[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Tue Feb 18 17:49:04 2025 +0100
+
+    Authentication --> done
+
+[33mcommit 9fff141b9c0affc2bb8df9526be1a910cec6fba6[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Tue Feb 18 16:30:20 2025 +0100
+
+    Authentication --> done
+
+[33mcommit 45e6d2010fbf7f5d30d4780f0af5407dca5f8fc2[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Sat Feb 15 14:41:38 2025 +0100
+
+    optimized for testing auth
+
+[33mcommit decc1a931300f94fc97bee64e112f3ddab3abed0[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Sat Feb 15 01:35:31 2025 +0100
+
+    added docker and docker-compose for local testing
+
+[33mcommit c65a72310d6ca23c05eb03ecfc41dcd45964e7ff[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Sat Feb 15 01:34:08 2025 +0100
+
+    added --> Authentication
+
+[33mcommit 0c05d95068a6c708637fde0233da0fc96d6d1bc4[m[33m ([m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m
+Author: themafto <weqqe7@gmail.com>
+Date:   Fri Feb 14 22:15:55 2025 +0100
+
+    First commit
