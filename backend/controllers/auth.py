@@ -137,7 +137,7 @@ async def register_teacher(
     return create_user_model
 
 @router.post('/create/admin', status_code=status.HTTP_201_CREATED)
-async def register_teacher(
+async def register_admin(
         create_user_request: CreateUserRequest,
         db: Session = Depends(get_db),
 ):
