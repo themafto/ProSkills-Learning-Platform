@@ -1,15 +1,12 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 from backend import config
 
-SQLALCHEMY_DATABASE_URL = "postgresql://{}:{}@{}:{}/{}".format(
-    config.POSTGRES_USER,
-    config.POSTGRES_PASSWORD,
-    config.POSTGRES_HOST,
-    config.DATABASE_PORT,
-    config.POSTGRES_DB,
-)
+SQLALCHEMY_DATABASE_URL = f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv('DATABASE_PORT')}/{os.getenv('POSTGRES_DB')}"
+
 
 # Create a synchronous engine
 engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=True)
