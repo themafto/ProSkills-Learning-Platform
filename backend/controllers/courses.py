@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends, Path
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.functions import current_user
 from starlette import status
 
 from backend.dependencies.getdb import get_db
@@ -45,14 +46,15 @@ async def get_course_by_id(db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
     return course
 
-@router.put("/update/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
+@router.put("/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
 async def update_course(
         course_id: int,
         update_course_request: CourseUpdate,
         db: Session = Depends(get_db),
         current_user: dict = Depends(get_current_user_jwt)):
 
-
+    if current_user.get('role') not in ['teacher', 'admin']:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access Denied")
 
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
@@ -60,7 +62,7 @@ async def update_course(
 
     ###  Authorization by ownership ###
     if course.teacher_id != current_user.get("user_id"):
-        raise HTTPException(status_code=403, detail="Not authorized to update this course")
+        raise HTTPException(status_code=403, detail="Access denied")
 
     update_data = update_course_request.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -85,6 +87,10 @@ async def get_all_courses(db: Session = Depends(get_db)):
 async def delete_course(
         course_id: int,
         db: Session = Depends(get_db)):
+
+    if current_user.get('role') not in ['teacher', 'admin']:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     course = db.query(Course).filter(Course.id == course_id).delete()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")

@@ -1,41 +1,62 @@
-version: '3.8'
-
 services:
-  backend:
-    build:
-      context: ./
-      dockerfile: ./Dockerfile
-    ports:
-      - "8001:8001"
-    depends_on:
-      - db
-    env_file:
-      - .env
-    restart: always
-    networks:
-      - my_network
-
   db:
-    image: postgres
+    image: postgres:15
+    restart: on-failure
     ports:
-      - "5432:5432"
+      - '5432:5432'
     env_file:
       - .env
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
     networks:
-      - my_network
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  adminer:
-    image: adminer
-    restart: always
+
+  alembic:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    command: >
+      sh -c "[ "$MAKE_MIGRATIONS" = "true" ] && alembic revision --autogenerate -m 'auto detect changes';
+             [ "$MAKE_MIGRATION_DOWNGRADE" = "true" ] && alembic downgrade "$MIGRATION_DOWNGRADE_TARGET";
+             [ "$MAKE_MIGRATION_DOWNGRADE" != "true" ] && alembic upgrade head"
+    volumes:
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    networks:
+      - app_network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    container_name: fastapi_app
     ports:
-      - "8002:8080"
+      - "5001:5000"
+    env_file:
+      - .env
     depends_on:
       - db
+      - alembic
     networks:
-      - my_network
+      - app_network
 
+volumes:
+  postgres-db:
+  cache:
+    driver: local
 
 networks:
-  my_network:
-
-
+  app_network:
+    driver: bridge

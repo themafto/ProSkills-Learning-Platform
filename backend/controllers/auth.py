@@ -55,9 +55,9 @@ class UserLogin(BaseModel):  # Create a Pydantic model for JSON request
 async def login_for_access_token(
         login_data: UserLogin,
         db: Session = Depends(get_db)):
-    print('Before checking user')
+
+
     user = authenticate_user(login_data.email, login_data.password, db)
-    print('After checking user')
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -68,7 +68,6 @@ async def login_for_access_token(
     access_token = create_access_token(user.email, user.id, user.role, timedelta(minutes=20))
     refresh_token = create_refresh_token(user.id)
 
-    print('after creating token and refresh token')
     response = JSONResponse(content={"access_token": access_token,"refresh_token": refresh_token, "token_type": "Bearer"})
     return response
 
@@ -81,7 +80,7 @@ async def refresh_token_get(
 
     try:
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id:str  = payload.get("id")
+        user_id:int  = payload.get("id")
     except jwt.ExpiredSignatureError:
         raise HTTPException(401, "Refresh token expired")
     except jwt.JWTError:
