@@ -75,7 +75,7 @@ async def login_for_access_token(
 
 @router.post("/refresh", response_model=Token, status_code=status.HTTP_200_OK)
 async def refresh_token_get(
-        refresh_token: str = Cookie(None),
+        refresh_token: str,
         db: Session = Depends(get_db)):
 
     try:

@@ -13,14 +13,14 @@ class CourseBase(BaseModel):
 
 
 class CourseResponse(BaseModel):
+    id: int
     title: str
     description: str
     lessons_count: int
     lessons_duration: int
     teacher_id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CourseCreate(CourseBase):
     files: Optional[List[str]] = None
