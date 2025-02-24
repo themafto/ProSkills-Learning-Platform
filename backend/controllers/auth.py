@@ -78,6 +78,8 @@ async def refresh_token_get(
         refresh_token: str,
         db: Session = Depends(get_db)):
 
+    if refresh_token is None or not refresh_token.strip():  # Also check for empty strings
+        raise HTTPException(status_code=401, detail="Refresh token missing or invalid")
     try:
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id:int  = payload.get("id")
