@@ -19,15 +19,23 @@ oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/token')
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 ALGORITHM = os.environ.get("ALGORITHM")
-REFRESH_TOKEN_EXPIRE_DAYS = os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS")
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", 1))
 
 ### Check if user is in our DATABASE ###
 def authenticate_user(email: str, password: str, db):
     user = db.query(OurUsers).filter(OurUsers.email == email).first()
     if not user:
-        return False
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     if not bcrypt_context.verify(password, user.hashed_password):
-        return False
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 

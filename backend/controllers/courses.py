@@ -83,15 +83,16 @@ async def update_course(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error updating course: {e}")
     return course
 
-@router.get("/", response_model=List[CourseResponse] )
+@router.get("/")
 async def get_all_courses(db: Session = Depends(get_db)):
     query = sqlalchemy.select(Course)
     result = db.execute(query).fetchall()
-    return [
-        CourseResponse.model_validate(
-            {**course.to_dict(), "teacher": UserResponse.model_validate(course.teacher.to_dict())})
-        for course in result
-    ]
+    try:
+        courses = db.query(Course).all()
+        return courses  # objects of SQLAlchemy
+    except Exception as e:
+        print(e)  # или logging.exception(e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 @router.delete("/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
 async def delete_course(
         course_id: int,
