@@ -1,3 +1,4 @@
+import os
 from datetime import timezone, datetime, timedelta
 
 from fastapi import Depends, HTTPException
@@ -16,9 +17,9 @@ bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/token')
 
 
-SECRET_KEY = 'a7c6df360291729a64a04dee33078576a2008b25c7e3e7f8cf3ee0a5a085616c'  # for testing #
-ALGORITHM = 'HS256'
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+SECRET_KEY = os.environ.get("SECRET_KEY")
+ALGORITHM = os.environ.get("ALGORITHM")
+REFRESH_TOKEN_EXPIRE_DAYS = os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS")
 
 ### Check if user is in our DATABASE ###
 def authenticate_user(email: str, password: str, db):
