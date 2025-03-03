@@ -19,7 +19,7 @@ router = APIRouter(
 
 
 
-@router.post("/create_course", response_model=CourseResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=CourseResponse, status_code=status.HTTP_201_CREATED)
 async def create_course(
         create_course_request: CourseCreate,
         db: Session = Depends(get_db),
