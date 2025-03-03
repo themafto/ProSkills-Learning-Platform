@@ -12,9 +12,11 @@ from backend.dependencies.getdb import get_db
 from backend.models.ourusers import OurUsers
 from backend.oauth2 import bcrypt_context, authenticate_user, create_access_token, get_current_user_jwt, \
     create_refresh_token, SECRET_KEY, ALGORITHM
+from backend.roles import UserRole
 from backend.schemas.token import Token
 from backend.schemas.user import CreateUserRequest, UserResponse
 from backend.services.user_service import check_if_user_exists
+
 
 router = APIRouter(
     prefix='/auth',
@@ -38,7 +40,7 @@ async def create_user(
         hashed_password=bcrypt_context.hash(create_user_request.password),
         first_name=create_user_request.first_name,
         last_name=create_user_request.last_name,
-        role="student",
+        role=UserRole.STUDENT.value,
         is_active=True
     )
     db.add(create_user_model)
@@ -119,7 +121,7 @@ async def register_teacher(
         create_user_request: CreateUserRequest,
         db: Session = Depends(get_db),
         current_user: dict = Depends(get_current_user_jwt)):
-    if current_user.get('role') != 'admin':
+    if current_user.get('role') != UserRole.ADMIN.value:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     check_if_user_exists(db, create_user_request.username, create_user_request.email)
@@ -130,7 +132,7 @@ async def register_teacher(
         hashed_password=bcrypt_context.hash(create_user_request.password),
         first_name=create_user_request.first_name,
         last_name=create_user_request.last_name,
-        role="teacher",
+        role=UserRole.TEACHER.value,
         is_active=True
     )
     db.add(create_user_model)
@@ -138,7 +140,7 @@ async def register_teacher(
     db.refresh(create_user_model)
     return create_user_model
 
-@router.post('/create/admin', status_code=status.HTTP_201_CREATED)
+@router.post('/create/admin', status_code=status.HTTP_201_CREATED, response_model=None)
 async def register_admin(
         create_user_request: CreateUserRequest,
         db: Session = Depends(get_db),
@@ -151,7 +153,7 @@ async def register_admin(
         hashed_password=bcrypt_context.hash(create_user_request.password),
         first_name=create_user_request.first_name,
         last_name=create_user_request.last_name,
-        role="admin",
+        role=UserRole.ADMIN.value,
         is_active=True
     )
     db.add(create_user_model)

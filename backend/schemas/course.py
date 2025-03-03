@@ -1,7 +1,10 @@
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict, BaseModel
 from pydantic.v1 import validator
+
+
+from backend.schemas.user import UserResponse
 
 
 class CourseBase(BaseModel):
@@ -18,9 +21,11 @@ class CourseResponse(BaseModel):
     description: str
     lessons_count: int
     lessons_duration: int
-    teacher_id: int
+    files: Optional[List[str]]
+    teacher: Optional[UserResponse]
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class CourseCreate(CourseBase):
     files: Optional[List[str]] = None
@@ -38,7 +43,6 @@ class CourseCreate(CourseBase):
 class Course(CourseBase):
     id: int
     teacher_id: int
-
 
 
 class CourseUpdate(BaseModel):

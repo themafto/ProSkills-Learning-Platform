@@ -1,17 +1,20 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, ARRAY
+from sqlalchemy import Column, Integer, String, ARRAY
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from backend.models.basemodel import BaseModel
+from backend.models.enrollment import Enrollment
+from sqlalchemy.sql.schema import ForeignKey
 
 class Course(BaseModel):
     __tablename__ = 'courses'
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    title = Column(String)
-    description = Column(String)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=False)
     lessons_count: Mapped[int] = mapped_column(Integer)
     lessons_duration: Mapped[int] = mapped_column(Integer)
     files = Column(ARRAY(String))  # Для PostgreSQL
-    teacher_id = Column(Integer, ForeignKey('our_users.id'))
+    teacher_id: Mapped[int] = mapped_column(Integer, ForeignKey('our_users.id'), nullable=False)
 
-    users = relationship("OurUsers", back_populates="courses")
+    teacher = relationship("OurUsers", back_populates="courses_teaching", foreign_keys=[teacher_id])
+    students = relationship("OurUsers", secondary=Enrollment.__table__, back_populates="courses")

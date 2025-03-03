@@ -41,4 +41,5 @@ class UserResponse(BaseModel):  # Output schema
     role: str
     is_active: bool
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        orm_mode = True
