@@ -79,7 +79,7 @@ async def update_course(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error updating course: {e}")
     return course
 
-@router.get("/get_all", response_model=List[CourseResponse] )
+@router.get("/", response_model=List[CourseResponse] )
 async def get_all_courses(db: Session = Depends(get_db)):
     courses = db.query(Course).all()
     return courses 
