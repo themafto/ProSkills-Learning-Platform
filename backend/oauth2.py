@@ -1,7 +1,7 @@
 import os
 from datetime import timezone, datetime, timedelta
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Cookie
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -52,22 +52,21 @@ def create_refresh_token( user_id: int):
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
 ### Checking if the JWT Token of our user is correct ###
-async def get_current_user_jwt(db: Session = Depends(get_db), token: str = Depends(oauth2_bearer)):
+async def get_current_user_jwt(db: Session = Depends(get_db),
+                               access_token: str = Cookie(None, alias="access_token")):
+    if access_token is None:
+        raise HTTPException(status_code=401, detail="Access token missing")
+
     try:
-        payload = jwt.decode(token,SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload['sub']
-        user_id: int = payload['id']
-        user_role: str = payload['role']
-        if email is None or user_id is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                                detail='Incorrect username or password')
+        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        user_id: int = payload.get("id")
+        user_role: str = payload.get("role")
 
-        ### Finding user in DB (for security) ###
-        user = db.query(OurUsers).filter(OurUsers.id == user_id,OurUsers.email == email).first()  # check id and username #
-        if user is None or user.role != user_role:  # Checking role #
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
+        user = db.query(OurUsers).filter(OurUsers.id == user_id, OurUsers.email == email).first()
+        if user is None or user.role != user_role:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        return {'username': email, 'user_id': user_id, 'role': user_role}
+        return {"username": email, "user_id": user_id, "role": user_role}
     except JWTError:
-        return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                             detail='Incorrect email or password')
+        raise HTTPException(status_code=401, detail="Invalid access token")

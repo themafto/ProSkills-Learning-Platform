@@ -31,9 +31,14 @@ router = APIRouter(
 
 ### ROUTE FOR REGISTRATION ###
 @router.get('/me', response_model=UserOutPut)
-async def get_info(current_user: UserOutPut = Depends(get_current_user_jwt)):
-    return current_user
+async def get_info(current_user: dict = Depends(get_current_user_jwt)):
+    return {"message": "This is a protected route", "user": current_user}
 
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(response: Response):
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
+    return {"message": "Successfully logged out"}
 
 @router.post('/', status_code=status.HTTP_201_CREATED)
 async def create_user(
