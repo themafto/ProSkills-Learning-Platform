@@ -4,15 +4,13 @@ from pydantic import ConfigDict, BaseModel
 from pydantic.v1 import validator
 
 
-from backend.schemas.user import UserResponse
-
 
 class CourseBase(BaseModel):
     title: str
     description: str
     lessons_count: int
     lessons_duration: int ### in minutes for example ###
-    files: List[str] ### for URLs to files(pdf)
+    files: List[str] = None ### for URLs to files(pdf)
 
 
 class CourseResponse(BaseModel):
@@ -22,7 +20,7 @@ class CourseResponse(BaseModel):
     lessons_count: int
     lessons_duration: int
     files: Optional[List[str]]
-    teacher: Optional[UserResponse]
+
 
     model_config = ConfigDict(from_attributes=True)
 

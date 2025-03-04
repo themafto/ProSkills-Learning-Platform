@@ -1,5 +1,4 @@
 import re
-
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
@@ -44,7 +43,10 @@ class UserResponse(BaseModel):
     class Config:
         orm_mode = True
 
-class UserOutPut(CreateUserRequest):
+class UserLoginResponse(BaseModel):
     email: str
     id: int
     role: str
+
+    class Config:
+        orm_mode = True

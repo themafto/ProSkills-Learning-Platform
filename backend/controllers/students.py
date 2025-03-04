@@ -10,7 +10,7 @@ from backend.models import OurUsers, Course
 from backend.models.enrollment import Enrollment
 from backend.oauth2 import get_current_user_jwt
 from backend.schemas.course import CourseResponse
-from backend.schemas.user import UserOutPut
+from backend.schemas.user import UserLoginResponse
 
 router = APIRouter(
     prefix='/student',
@@ -64,7 +64,7 @@ async def get_course_by_id(
 
     return courses
 
-@router.get("/getStudentsOnCourse/{course_id}", response_model=List[UserOutPut], status_code=status.HTTP_200_OK)
+@router.get("/getStudentsOnCourse/{course_id}", response_model=List[UserLoginResponse], status_code=status.HTTP_200_OK)
 async def get_students_on_course(
         course_id: int,
         db: Session = Depends(get_db),

@@ -1,5 +1,4 @@
 from datetime import timedelta
-from email.policy import default
 from typing import List
 
 from fastapi import APIRouter
@@ -18,7 +17,7 @@ from backend.oauth2 import bcrypt_context, authenticate_user, create_access_toke
     create_refresh_token, SECRET_KEY, ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
 from backend.roles import UserRole
 
-from backend.schemas.user import CreateUserRequest, UserResponse, UserOutPut
+from backend.schemas.user import CreateUserRequest, UserResponse, UserLoginResponse
 from backend.services.user_service import check_if_user_exists
 
 
@@ -30,9 +29,11 @@ router = APIRouter(
 
 
 ### ROUTE FOR REGISTRATION ###
-@router.get('/me', response_model=UserOutPut)
+@router.get('/me', response_model=UserLoginResponse)
 async def get_info(current_user: dict = Depends(get_current_user_jwt)):
-    return {"message": "This is a protected route", "user": current_user}
+    return {"id": current_user["user_id"], "email": current_user["username"], "role": current_user["role"]}
+
+
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(response: Response):

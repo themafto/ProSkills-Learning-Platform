@@ -2,12 +2,12 @@ from typing import List
 
 import sqlalchemy
 from fastapi import APIRouter, HTTPException
-from fastapi.params import Depends, Path
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.sql.functions import current_user
+from fastapi.params import Depends
+from sqlalchemy.orm import Session
+
 from starlette import status
 
-from backend import schemas
+
 from backend.dependencies.getdb import get_db
 from backend.models import Course
 from backend.oauth2 import get_current_user_jwt
