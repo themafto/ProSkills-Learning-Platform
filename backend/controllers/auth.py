@@ -1,4 +1,5 @@
 from datetime import timedelta
+from email.policy import default
 from typing import List
 
 from fastapi import APIRouter
@@ -17,7 +18,7 @@ from backend.oauth2 import bcrypt_context, authenticate_user, create_access_toke
     create_refresh_token, SECRET_KEY, ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
 from backend.roles import UserRole
 
-from backend.schemas.user import CreateUserRequest, UserResponse
+from backend.schemas.user import CreateUserRequest, UserResponse, UserOutPut
 from backend.services.user_service import check_if_user_exists
 
 
@@ -29,6 +30,11 @@ router = APIRouter(
 
 
 ### ROUTE FOR REGISTRATION ###
+@router.get('/me', response_model=UserOutPut)
+async def get_info(current_user: UserOutPut = Depends(get_current_user_jwt)):
+    return current_user
+
+
 @router.post('/', status_code=status.HTTP_201_CREATED)
 async def create_user(
         create_user_request: CreateUserRequest,
@@ -56,7 +62,6 @@ async def create_user(
 class UserLogin(BaseModel):  # Create a Pydantic model for JSON request
     email: str
     password: str
-    refresh_token: Optional[str] = None
 @router.post('/token', status_code=status.HTTP_200_OK)
 async def login_for_access_token(
         response: Response,

@@ -47,8 +47,8 @@ async def create_course(
     return CourseResponse.model_validate(course_dict)
 
 @router.get("/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
-async def get_course_by_id(db: Session = Depends(get_db)):
-    course = db.query(Course).filter(Course.id == Course.id).first()
+async def get_course_by_id(course_id: int, db: Session = Depends(get_db)):
+    course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
     return course
@@ -106,3 +106,4 @@ async def delete_course(
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
     return course
+

@@ -38,7 +38,6 @@ def authenticate_user(email: str, password: str, db):
         )
     return user
 
-
 ### Create a JWT token for user ###
 def create_access_token(email: str, user_id: int, user_role: str, expires_delta: timedelta) -> object:
     encode = {'sub': email, 'id': user_id, 'role': user_role, 'token_type': 'access_token'}
