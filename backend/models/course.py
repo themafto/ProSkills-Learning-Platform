@@ -10,9 +10,11 @@ class Course(BaseModel):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String, nullable=False)
+    category = Column(String, nullable=False)
     description = Column(String, nullable=False)
     lessons_count: Mapped[int] = mapped_column(Integer)
     lessons_duration: Mapped[int] = mapped_column(Integer)
+    rating: Mapped[int] = mapped_column(Integer)
     files = Column(ARRAY(String))  # Для PostgreSQL
     teacher_id: Mapped[int] = mapped_column(Integer, ForeignKey('our_users.id'), nullable=False)
 

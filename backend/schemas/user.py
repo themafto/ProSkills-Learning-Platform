@@ -3,18 +3,13 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class CreateUserRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=20)
     email: str
     password: str = Field(min_length=8, max_length=128)
     first_name: str | None = None
     last_name: str | None = None
     role: str = Field(default='student')
 
-    @field_validator('username')
-    def validate_username(cls, v):
-        if not re.match("^[a-zA-Z0-9_]*$", v):  # Дозволені тільки латинські літери, цифри та _
-            raise ValueError('Username must contain only alphanumeric characters and underscores')
-        return v
+
 
     @field_validator('password')
     def validate_password(cls, v):
@@ -34,7 +29,6 @@ class CreateUserRequest(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: str
-    username: str
     first_name: str | None = None
     last_name: str | None = None
     role: str
@@ -50,3 +44,9 @@ class UserLoginResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+class TeacherOfCourse(BaseModel):
+    first_name: str | None = None
+    last_name: str | None = None
+    role: str
+    is_active: bool

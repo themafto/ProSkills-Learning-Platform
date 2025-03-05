@@ -67,6 +67,6 @@ async def get_current_user_jwt(db: Session = Depends(get_db),
         if user is None or user.role != user_role:
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        return {"username": email, "user_id": user_id, "role": user_role}
+        return {"email": email, "user_id": user_id, "role": user_role}
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid access token")

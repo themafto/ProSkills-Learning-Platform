@@ -31,7 +31,7 @@ router = APIRouter(
 ### ROUTE FOR REGISTRATION ###
 @router.get('/me', response_model=UserLoginResponse)
 async def get_info(current_user: dict = Depends(get_current_user_jwt)):
-    return {"id": current_user["user_id"], "email": current_user["username"], "role": current_user["role"]}
+    return {"id": current_user["user_id"], "email": current_user["email"], "role": current_user["role"]}
 
 
 
@@ -46,12 +46,11 @@ async def create_user(
         create_user_request: CreateUserRequest,
         db: Session = Depends(get_db)):
 
-    check_if_user_exists(db, create_user_request.username, create_user_request.email)
+    check_if_user_exists(db, create_user_request.email)
 
 
     create_user_model = OurUsers(
         email=create_user_request.email,
-        username=create_user_request.username,
         hashed_password=bcrypt_context.hash(create_user_request.password),
         first_name=create_user_request.first_name,
         last_name=create_user_request.last_name,
@@ -129,11 +128,10 @@ async def register_teacher(
     if current_user.get('role') != UserRole.ADMIN.value:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
-    check_if_user_exists(db, create_user_request.username, create_user_request.email)
+    check_if_user_exists(db, create_user_request.email)
 
     create_user_model = OurUsers(
         email=create_user_request.email,
-        username=create_user_request.username,
         hashed_password=bcrypt_context.hash(create_user_request.password),
         first_name=create_user_request.first_name,
         last_name=create_user_request.last_name,
@@ -150,11 +148,10 @@ async def register_admin(
         create_user_request: CreateUserRequest,
         db: Session = Depends(get_db),
 ):
-    check_if_user_exists(db, create_user_request.username, create_user_request.email)
+    check_if_user_exists(db, create_user_request.email)
 
     create_user_model = OurUsers(
         email=create_user_request.email,
-        username=create_user_request.username,
         hashed_password=bcrypt_context.hash(create_user_request.password),
         first_name=create_user_request.first_name,
         last_name=create_user_request.last_name,

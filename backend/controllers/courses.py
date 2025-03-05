@@ -3,7 +3,7 @@ from typing import List
 import sqlalchemy
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from starlette import status
 
@@ -11,8 +11,8 @@ from starlette import status
 from backend.dependencies.getdb import get_db
 from backend.models import Course
 from backend.oauth2 import get_current_user_jwt
-from backend.schemas.course import CourseCreate, CourseUpdate, CourseResponse
-from backend.schemas.user import UserResponse
+from backend.schemas.course import CourseCreate, CourseUpdate, CourseResponse, CourseInfo
+from backend.schemas.user import UserResponse, TeacherOfCourse
 
 router = APIRouter(
     prefix='/courses',
@@ -43,12 +43,14 @@ async def create_course(
     db.refresh(course)
 
     course_dict = course.to_dict()
-    course_dict['teacher'] = UserResponse.model_validate(course.teacher.to_dict())
+    course_dict['teacher'] = TeacherOfCourse.model_validate(course.teacher.to_dict())
     return CourseResponse.model_validate(course_dict)
 
 @router.get("/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
 async def get_course_by_id(course_id: int, db: Session = Depends(get_db)):
-    course = db.query(Course).filter(Course.id == course_id).first()
+
+    # Use joinedload specifically for the teacher relationship
+    course = db.query(Course).options(joinedload(Course.teacher)).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
     return course
@@ -83,16 +85,15 @@ async def update_course(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error updating course: {e}")
     return course
 
-@router.get("/")
+@router.get("/", response_model=List[CourseInfo])
 async def get_all_courses(db: Session = Depends(get_db)):
-    query = sqlalchemy.select(Course)
-    result = db.execute(query).fetchall()
     try:
         courses = db.query(Course).all()
         return courses  # objects of SQLAlchemy
     except Exception as e:
-        print(e)  # или logging.exception(e)
+        print(e)  # or logging.exception(e)
         raise HTTPException(status_code=500, detail="Internal server error")
+
 @router.delete("/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
 async def delete_course(
         course_id: int,

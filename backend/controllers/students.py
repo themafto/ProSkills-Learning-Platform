@@ -26,7 +26,7 @@ async def addToCourse(course_id,
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This course does not exist")
 
-    student: Optional[OurUsers] = db.query(OurUsers).filter(OurUsers.id == current_user['id']).first()
+    student: Optional[OurUsers] = db.query(OurUsers).filter(OurUsers.id == current_user['user_id']).first()
     if student is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
