@@ -80,8 +80,10 @@ async def login_for_access_token(
     access_token = create_access_token(user.email, user.id, user.role, timedelta(minutes=20))
     refresh_token = create_refresh_token(user.id)
 
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="strict", expires=20*60)
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="strict", expires=REFRESH_TOKEN_EXPIRE_DAYS*24*60*60)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, #secure=True,
+                        samesite="lax", expires=20*60)
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, #secure=True,
+                        samesite="lax", expires=REFRESH_TOKEN_EXPIRE_DAYS*24*60*60)
 
     return {"message": "Login successful"}
 
@@ -109,7 +111,7 @@ async def refresh_token_get(
         new_access_token = create_access_token(
             email=user.email, user_id=user.id, user_role=user.role, expires_delta=timedelta(minutes=20)
         )
-        response.set_cookie(key="access_token", value=new_access_token, httponly=True, secure=True, samesite="strict", expires=20*60)
+        response.set_cookie(key="access_token", value=new_access_token, httponly=True, samesite="lax", expires=20*60)
         return {"message": "Refresh successful"}
 
     except jwt.ExpiredSignatureError:

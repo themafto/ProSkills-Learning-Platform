@@ -94,7 +94,7 @@ async def get_all_courses(db: Session = Depends(get_db)):
         print(e)  # or logging.exception(e)
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.delete("/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
+@router.delete("/{course_id}", status_code=status.HTTP_200_OK)
 async def delete_course(
         course_id: int,
         current_user: dict = Depends(get_current_user_jwt),
@@ -106,5 +106,5 @@ async def delete_course(
     course = db.query(Course).filter(Course.id == course_id).delete()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
-    return course
+    return {"message": "Course deleted successfully"}
 

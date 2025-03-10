@@ -47,39 +47,64 @@ async def addToCourse(course_id,
 
 
 
-@router.get("/getCoursesOnUser/{student_id}", response_model=List[CourseResponse], status_code=status.HTTP_200_OK)
-async def get_course_by_id(
-        student_id: int,
+@router.get("/my_students", response_model=List[UserLoginResponse], status_code=status.HTTP_200_OK)
+async def get_my_students(
         db: Session = Depends(get_db),
         current_user: dict = Depends(get_current_user_jwt)):
 
-    if current_user.get('role') not in ['teacher', 'admin']:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if current_user.get('role') != 'teacher':
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Only teachers can access this endpoint.")
+
+    teacher_id = current_user.get('user_id')
+    if not teacher_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user token. Missing teacher ID.")
+
+
+    #  Используем subquery для получения всех студентов всех курсов преподавателя
+    students = db.query(OurUsers).join(Enrollment).join(Course).filter(Course.teacher_id == teacher_id).distinct().all()
+
+    return students
+
+
+@router.get("/my_courses", response_model=List[CourseResponse], status_code=status.HTTP_200_OK)
+async def get_my_courses(
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(get_current_user_jwt)):
+
+    student_id = current_user.get('user_id')
+    if not student_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user token. Missing student ID.")
 
     student = db.query(OurUsers).filter(OurUsers.id == student_id).first()
     if not student:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This student does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
 
-    courses = db.query(Course).join(Course.students).filter(Enrollment.user_id == student_id).all()
+    courses = db.query(Course).join(Enrollment).filter(Enrollment.user_id == student_id).all()
 
     return courses
 
-@router.get("/getStudentsOnCourse/{course_id}", response_model=List[UserLoginResponse], status_code=status.HTTP_200_OK)
-async def get_students_on_course(
-        course_id: int,
+
+
+
+@router.get("/getTeachersCourses/", response_model=List[CourseResponse], status_code=status.HTTP_200_OK)
+async def get_course_by_id(
         db: Session = Depends(get_db),
         current_user: dict = Depends(get_current_user_jwt)):
 
-    if current_user.get('role') not in ['teacher', 'admin']:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    course = db.query(Course).filter(Course.id == course_id).first()
-    if not course:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This course does not exist")
+    if current_user.get('role') != 'teacher':
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Access denied. Only teachers can access this endpoint.")
 
-    students = db.query(OurUsers).join(OurUsers.courses).filter(Enrollment.course_id == course_id).all()
+    teacher_id = current_user.get('user_id')
+    if not teacher_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user token. Missing teacher ID.")
 
-    return students
+    courses = db.query(Course).filter(Course.teacher_id == teacher_id).all()
+
+    return courses
+
+
 
 @router.delete("/{student_id}/{course_id}")
 async def delete_student(
