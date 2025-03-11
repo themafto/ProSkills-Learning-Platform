@@ -32,7 +32,7 @@ class CreateUserRequest(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserResponse(BaseModel):  # Output schema
+class UserResponse(BaseModel):
     id: int
     email: str
     username: str
@@ -41,4 +41,10 @@ class UserResponse(BaseModel):  # Output schema
     role: str
     is_active: bool
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        orm_mode = True
+
+class UserOutPut(CreateUserRequest):
+    email: str
+    id: int
+    role: str

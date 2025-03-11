@@ -1,3 +1,4 @@
+import os
 from datetime import timezone, datetime, timedelta
 
 from fastapi import Depends, HTTPException
@@ -16,19 +17,26 @@ bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl='auth/token')
 
 
-SECRET_KEY = 'a7c6df360291729a64a04dee33078576a2008b25c7e3e7f8cf3ee0a5a085616c'  # for testing #
-ALGORITHM = 'HS256'
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+SECRET_KEY = os.environ.get("SECRET_KEY")
+ALGORITHM = os.environ.get("ALGORITHM")
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", 1))
 
 ### Check if user is in our DATABASE ###
 def authenticate_user(email: str, password: str, db):
     user = db.query(OurUsers).filter(OurUsers.email == email).first()
     if not user:
-        return False
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     if not bcrypt_context.verify(password, user.hashed_password):
-        return False
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
-
 
 ### Create a JWT token for user ###
 def create_access_token(email: str, user_id: int, user_role: str, expires_delta: timedelta) -> object:
