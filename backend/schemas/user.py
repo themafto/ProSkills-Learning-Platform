@@ -1,9 +1,9 @@
 import re
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, EmailStr
 
 
 class CreateUserRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     first_name: str | None = None
     last_name: str | None = None
@@ -28,7 +28,7 @@ class CreateUserRequest(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
-    email: str
+    email: EmailStr
     first_name: str | None = None
     last_name: str | None = None
     role: str

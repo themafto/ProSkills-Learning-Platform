@@ -1,4 +1,5 @@
-from datetime import timedelta
+import hashlib
+from datetime import timedelta, datetime
 from typing import List
 
 from fastapi import APIRouter
@@ -18,6 +19,8 @@ from backend.oauth2 import bcrypt_context, authenticate_user, create_access_toke
 from backend.roles import UserRole
 
 from backend.schemas.user import CreateUserRequest, UserResponse, UserLoginResponse
+from backend.services.email_service import send_reset_password_email
+from backend.services.security import generate_password_reset_token
 from backend.services.user_service import check_if_user_exists
 
 
@@ -173,5 +176,32 @@ async def get_all_users(
     users = db.query(OurUsers).all()
     return users
 
+@router.post("/reset-password")
+async def request_password_reset(email: str, db: Session = Depends(get_db)):
+    user = db.query(OurUsers).filter(OurUsers.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    token, hashed_token = generate_password_reset_token()
+    user.reset_token = hashed_token
+    user.reset_token_expires_at = datetime.utcnow() + timedelta(hours=1)
+    db.commit()
+
+    await send_reset_password_email(email, token)
+    return {"message": "Instruction how to reset your password was send to your email"}
 
 
+@router.post("/reset-password/{token}")
+async def reset_password(token: str, new_password: str, db: Session = Depends(get_db)):
+    hashed_token = hashlib.sha256(token.encode()).hexdigest()
+    user = db.query(OurUsers).filter(OurUsers.reset_token == hashed_token).first()
+
+    if not user or user.reset_token_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Token is expired or wrong")
+
+    user.password = bcrypt_context.hash(new_password)
+    user.reset_token = None
+    user.reset_token_expires_at = None
+    db.commit()
+
+    return {"message": "Password was changed!"}

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
 
 from backend.models.basemodel import BaseModel
 from backend.models.enrollment import Enrollment
@@ -17,6 +17,8 @@ class OurUsers(BaseModel):
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
     role = Column(String, default=UserRole.STUDENT.value)
+    reset_token = Column(String, nullable=True)
+    reset_token_expires_at = Column(DateTime(timezone=True), nullable=True)
 
     courses = relationship("Course",secondary=Enrollment.__table__, back_populates="students")
     courses_teaching = relationship("Course", back_populates="teacher")
