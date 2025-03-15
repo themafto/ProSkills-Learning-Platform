@@ -112,8 +112,12 @@ async def get_all_courses(
 
             courses_info.append(
                 CourseInfo(
-                    **course.__dict__,  # Spread existing attributes
-                    is_enrolled=is_enrolled  # Add is_enrolled
+                    id=course.id,  # Access using .id
+                    title=course.title,  # Access using .title
+                    category=course.category,  # Access using .category
+                    rating=course.rating,  # Access using .rating
+                    teacher_id=course.teacher_id,  # Access using .teacher_id
+                    is_enrolled=is_enrolled
                 )
             )
         return courses_info
