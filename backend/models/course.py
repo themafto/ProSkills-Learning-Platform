@@ -15,6 +15,7 @@ class Course(BaseModel):
     lessons_count: Mapped[int] = mapped_column(Integer)
     lessons_duration: Mapped[int] = mapped_column(Integer)
     rating: Mapped[int] = mapped_column(Integer)
+    ratings_count: Mapped[int] = mapped_column(Integer, default=0)
     files = Column(ARRAY(String))  # Для PostgreSQL
     teacher_id: Mapped[int] = mapped_column(Integer, ForeignKey('our_users.id'), nullable=False)
 

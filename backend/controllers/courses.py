@@ -9,9 +9,12 @@ from starlette import status
 
 
 from backend.dependencies.getdb import get_db
-from backend.models import Course
+from backend.models import Course, OurUsers
+from backend.models.enrollment import Enrollment
+from backend.models.rating import Rating
 from backend.oauth2 import get_current_user_jwt
 from backend.schemas.course import CourseCreate, CourseUpdate, CourseResponse, CourseInfo
+from backend.schemas.rating import RatingResponse, RatingCreate
 from backend.schemas.user import UserResponse, TeacherOfCourse
 
 router = APIRouter(
@@ -86,12 +89,37 @@ async def update_course(
     return course
 
 @router.get("", response_model=List[CourseInfo])
-async def get_all_courses(db: Session = Depends(get_db)):
+async def get_all_courses(
+    db: Session = Depends(get_db), current_user: OurUsers = Depends(get_current_user_jwt)):
     try:
         courses = db.query(Course).all()
-        return courses  # objects of SQLAlchemy
+
+        # Check enrollment for each course
+        courses_info = []
+        for course in courses:
+            is_enrolled = False
+            if current_user: # Check if a user is on Course
+                enrollment = (
+                    db.query(Enrollment)
+                    .filter(
+                        Enrollment.user_id == current_user.id,
+                        Enrollment.course_id == course.id,
+                    )
+                    .first()
+                )
+                if enrollment:
+                    is_enrolled = True
+
+            courses_info.append(
+                CourseInfo(
+                    **course.__dict__,  # Spread existing attributes
+                    is_enrolled=is_enrolled  # Add is_enrolled
+                )
+            )
+        return courses_info
+
     except Exception as e:
-        print(e)  # or logging.exception(e)
+        print(e)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.delete("/{course_id}", status_code=status.HTTP_200_OK)
@@ -107,4 +135,39 @@ async def delete_course(
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
     return {"message": "Course deleted successfully"}
+
+@router.post("/{course_id}/rate", response_model=RatingResponse, status_code=201)
+async def rate_course(
+    course_id: int,
+    rating_data: RatingCreate,
+    current_user: OurUsers = Depends(get_current_user_jwt),
+    db: Session = Depends(get_db),
+):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    existing_rating = db.query(Rating).filter(
+        Rating.user_id == current_user.id, Rating.course_id == course_id
+    ).first()
+
+    if existing_rating:
+        raise HTTPException(status_code=400, detail="User already rated this course")
+
+    new_rating = Rating(
+        user_id=current_user.id, course_id=course_id, rating=rating_data.rating
+    )
+    db.add(new_rating)
+    db.commit()
+    db.refresh(new_rating)
+
+    # Update course rating
+    all_ratings = db.query(Rating).filter(Rating.course_id == course_id).all()
+    total_rating = sum(r.rating for r in all_ratings)
+    course.ratings_count = len(all_ratings)
+    course.rating = total_rating / course.ratings_count if course.ratings_count else 0.0 # Calculate the new average
+    db.commit()
+
+
+    return new_rating
 

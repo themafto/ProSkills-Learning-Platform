@@ -27,6 +27,8 @@ class CourseResponse(BaseModel):
     files: Optional[List[str]]
     teacher: TeacherOfCourse
 
+
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -51,7 +53,9 @@ class CourseInfo(BaseModel):
     id: int
     title: str
     category: str
-    rating: int
+    rating: float
+    teacher_id: int
+    is_enrolled: bool
 
     model_config = ConfigDict(from_attributes=True)
 
