@@ -6,7 +6,7 @@ import os
 load_dotenv()
 
 class EmailSchema(BaseModel):
-    email: str
+    email: EmailStr
 
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("SMTP_USERNAME"),
@@ -19,7 +19,7 @@ conf = ConnectionConfig(
     USE_CREDENTIALS=True
 )
 
-async def send_reset_password_email(email: str, token: str):
+async def send_reset_password_email(email: EmailStr, token: str):
     link = f"{os.getenv('FRONTEND_URL')}/reset-password/{token}"
     message = MessageSchema(
         subject="Reset password",

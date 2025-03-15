@@ -5,6 +5,7 @@ from fastapi import Depends, HTTPException, Cookie
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
+from pydantic import EmailStr
 from sqlalchemy.orm import Session
 from starlette import status
 
@@ -22,7 +23,7 @@ ALGORITHM = os.environ.get("ALGORITHM")
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", 1))
 
 ### Check if user is in our DATABASE ###
-def authenticate_user(email: str, password: str, db):
+def authenticate_user(email: EmailStr, password: str, db):
     user = db.query(OurUsers).filter(OurUsers.email == email).first()
     if not user:
         raise HTTPException(
@@ -39,7 +40,7 @@ def authenticate_user(email: str, password: str, db):
     return user
 
 ### Create a JWT token for user ###
-def create_access_token(email: str, user_id: int, user_role: str, expires_delta: timedelta) -> object:
+def create_access_token(email: EmailStr, user_id: int, user_role: str, expires_delta: timedelta) -> object:
     encode = {'sub': email, 'id': user_id, 'role': user_role, 'token_type': 'access_token'}
     expire = datetime.now(timezone.utc) + expires_delta
     encode.update({'exp': expire})

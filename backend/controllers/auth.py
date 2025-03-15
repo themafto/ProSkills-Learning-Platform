@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter
 
 from jose import jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from fastapi import Cookie, Depends, HTTPException, Response, status
@@ -68,7 +68,7 @@ async def create_user(
 
 ### ROUTE FOR LOGIN ###
 class UserLogin(BaseModel):  # Create a Pydantic model for JSON request
-    email: str
+    email: EmailStr
     password: str
 @router.post('/token', status_code=status.HTTP_200_OK)
 async def login_for_access_token(

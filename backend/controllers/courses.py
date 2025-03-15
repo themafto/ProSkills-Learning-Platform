@@ -90,9 +90,10 @@ async def update_course(
 
 @router.get("", response_model=List[CourseInfo])
 async def get_all_courses(
-    db: Session = Depends(get_db), current_user: OurUsers = Depends(get_current_user_jwt)):
+    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user_jwt)):
+
     try:
-        courses = db.query(Course).all()
+        courses = db.query(Course).options(joinedload(Course.teacher)).all()
 
         # Check enrollment for each course
         courses_info = []
@@ -102,7 +103,7 @@ async def get_all_courses(
                 enrollment = (
                     db.query(Enrollment)
                     .filter(
-                        Enrollment.user_id == current_user.id,
+                        Enrollment.user_id == current_user["user_id"],
                         Enrollment.course_id == course.id,
                     )
                     .first()

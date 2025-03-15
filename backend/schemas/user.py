@@ -38,7 +38,7 @@ class UserResponse(BaseModel):
         orm_mode = True
 
 class UserLoginResponse(BaseModel):
-    email: str
+    email: EmailStr
     id: int
     role: str
 
