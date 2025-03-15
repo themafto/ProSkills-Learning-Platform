@@ -86,7 +86,7 @@ async def get_my_courses(
 
 
 
-@router.get("/getTeachersCourses/", response_model=List[CourseResponse], status_code=status.HTTP_200_OK)
+@router.get("/getTeachersCourses", response_model=List[CourseResponse], status_code=status.HTTP_200_OK)
 async def get_course_by_id(
         db: Session = Depends(get_db),
         current_user: dict = Depends(get_current_user_jwt)):

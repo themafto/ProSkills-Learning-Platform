@@ -15,7 +15,7 @@ router = APIRouter(
     prefix="/courses/{course_id}/assignments",
     tags=["Assignments"],
 )
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
 async def create_assignment(
     course_id: int,
     assignment_data: AssignmentCreate,

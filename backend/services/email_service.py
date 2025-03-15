@@ -14,8 +14,8 @@ conf = ConnectionConfig(
     MAIL_FROM=os.getenv("EMAIL_FROM"),
     MAIL_PORT=int(os.getenv("SMTP_PORT")),
     MAIL_SERVER=os.getenv("SMTP_SERVER"),
-    MAIL_TLS=True,
-    MAIL_SSL=False,
+    MAIL_STARTTLS=os.getenv("MAIL_STARTTLS", "True") == "True",  # Должно быть True/False
+    MAIL_SSL_TLS=os.getenv("MAIL_SSL_TLS", "False") == "True",   # Должно быть True/False
     USE_CREDENTIALS=True
 )
 

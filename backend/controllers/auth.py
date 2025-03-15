@@ -44,7 +44,7 @@ async def logout(response: Response):
     response.delete_cookie(key="refresh_token")
     return {"message": "Successfully logged out"}
 
-@router.post('/', status_code=status.HTTP_201_CREATED)
+@router.post('', status_code=status.HTTP_201_CREATED)
 async def create_user(
         create_user_request: CreateUserRequest,
         db: Session = Depends(get_db)):
@@ -169,7 +169,7 @@ async def register_admin(
     return create_user_model
 
 
-@router.get("/users/", response_model=List[UserResponse], status_code=status.HTTP_200_OK)
+@router.get("/users", response_model=List[UserResponse], status_code=status.HTTP_200_OK)
 async def get_all_users(
         db: Session = Depends(get_db),
 ):
