@@ -50,7 +50,13 @@ async def create_course(
     return CourseResponse.model_validate(course_dict)
 
 @router.get("/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK)
-async def get_course_by_id(course_id: int, db: Session = Depends(get_db)):
+async def get_course_by_id(
+        course_id: int,
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(get_current_user_jwt)):
+
+    if current_user.get('role') not in ['teacher', 'admin']:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access Denied")
 
     # Use joinedload specifically for the teacher relationship
     course = db.query(Course).options(joinedload(Course.teacher)).filter(Course.id == course_id).first()
@@ -175,4 +181,6 @@ async def rate_course(
 
 
     return new_rating
+
+
 

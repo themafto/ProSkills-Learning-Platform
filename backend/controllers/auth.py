@@ -1,5 +1,5 @@
 import hashlib
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from typing import List
 
 from fastapi import APIRouter
@@ -184,7 +184,7 @@ async def request_password_reset(email: str, db: Session = Depends(get_db)):
 
     token, hashed_token = generate_password_reset_token()
     user.reset_token = hashed_token
-    user.reset_token_expires_at = datetime.utcnow() + timedelta(hours=1)
+    user.reset_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
     db.commit()
 
     await send_reset_password_email(email, token)
@@ -196,7 +196,7 @@ async def reset_password(token: str, new_password: str, db: Session = Depends(ge
     hashed_token = hashlib.sha256(token.encode()).hexdigest()
     user = db.query(OurUsers).filter(OurUsers.reset_token == hashed_token).first()
 
-    if not user or user.reset_token_expires_at < datetime.utcnow():
+    if not user or user.reset_token_expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Token is expired or wrong")
 
     user.password = bcrypt_context.hash(new_password)

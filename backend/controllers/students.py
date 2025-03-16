@@ -47,8 +47,9 @@ async def addToCourse(course_id,
 
 
 
-@router.get("/my_students", response_model=List[UserLoginResponse], status_code=status.HTTP_200_OK)
+@router.get("/courses/{course_id}", response_model=List[UserLoginResponse], status_code=status.HTTP_200_OK)
 async def get_my_students(
+        course_id: int,
         db: Session = Depends(get_db),
         current_user: dict = Depends(get_current_user_jwt)):
 
@@ -59,9 +60,20 @@ async def get_my_students(
     if not teacher_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user token. Missing teacher ID.")
 
+    course = db.query(Course).filter(Course.id == course_id, Course.teacher_id == teacher_id).first()
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found or does not belong to the teacher.",
+        )
 
-    #  Используем subquery для получения всех студентов всех курсов преподавателя
-    students = db.query(OurUsers).join(Enrollment).join(Course).filter(Course.teacher_id == teacher_id).distinct().all()
+    students = (
+        db.query(OurUsers)
+        .join(Enrollment)
+        .filter(Enrollment.course_id == course_id)
+        .distinct()
+        .all()
+    )
 
     return students
 
@@ -87,7 +99,7 @@ async def get_my_courses(
 
 
 @router.get("/getTeachersCourses", response_model=List[CourseResponse], status_code=status.HTTP_200_OK)
-async def get_course_by_id(
+async def get_teacher_courses(
         db: Session = Depends(get_db),
         current_user: dict = Depends(get_current_user_jwt)):
 
