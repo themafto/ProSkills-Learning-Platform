@@ -18,11 +18,10 @@ from backend.oauth2 import bcrypt_context, authenticate_user, create_access_toke
     create_refresh_token, SECRET_KEY, ALGORITHM, REFRESH_TOKEN_EXPIRE_DAYS
 from backend.roles import UserRole
 
-from backend.schemas.user import CreateUserRequest, UserResponse, UserLoginResponse
-from backend.services.email_service import send_reset_password_email
+from backend.schemas.user import CreateUserRequest, UserResponse, UserLoginResponseAuth
 from backend.services.security import generate_password_reset_token
 from backend.services.user_service import check_if_user_exists
-
+from backend.celery_app import send_reset_password_email_task
 
 router = APIRouter(
     prefix='/auth',
@@ -32,7 +31,7 @@ router = APIRouter(
 
 
 ### ROUTE FOR REGISTRATION ###
-@router.get('/me', response_model=UserLoginResponse)
+@router.get('/me', response_model=UserLoginResponseAuth)
 async def get_info(current_user: dict = Depends(get_current_user_jwt)):
     return {"id": current_user["user_id"], "email": current_user["email"], "role": current_user["role"]}
 
@@ -187,8 +186,8 @@ async def request_password_reset(email: str, db: Session = Depends(get_db)):
     user.reset_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
     db.commit()
 
-    await send_reset_password_email(email, token)
-    return {"message": "Instruction how to reset your password was send to your email"}
+    send_reset_password_email_task.delay(email, token)  # Used .delay() to send to Celery
+    return {"message": "Password reset instructions sent to your email"}
 
 
 @router.post("/reset-password/{token}")
@@ -199,7 +198,7 @@ async def reset_password(token: str, new_password: str, db: Session = Depends(ge
     if not user or user.reset_token_expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Token is expired or wrong")
 
-    user.password = bcrypt_context.hash(new_password)
+    user.hashed_password = bcrypt_context.hash(new_password)
     user.reset_token = None
     user.reset_token_expires_at = None
     db.commit()

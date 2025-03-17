@@ -47,6 +47,14 @@ class UserLoginResponse(BaseModel):
     class Config:
         orm_mode = True
 
+class UserLoginResponseAuth(BaseModel):
+    email: EmailStr
+    id: int
+    role: str
+
+    class Config:
+        orm_mode = True
+
 class TeacherOfCourse(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
