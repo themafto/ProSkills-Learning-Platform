@@ -1,11 +1,22 @@
-from fastapi import APIRouter, UploadFile, File
+import os
 
-from backend.main import BUCKET_NAME, s3
+import boto3
+from fastapi import APIRouter, UploadFile, File
 
 router = APIRouter(
     prefix="/Files",
     tags=["filesForCourse"],
 )
+
+from dotenv import load_dotenv
+
+load_dotenv()  # take environment variables from .env.
+
+s3 = boto3.client('s3',
+                  aws_access_key_id=os.environ.get('ACCESS_KEY_ID'),
+                  aws_secret_access_key=os.environ.get('SECRET_ACCESS_KEY'),
+                  )
+BUCKET_NAME='files-for-team-project'
 
 @router.get('/all')
 async def get_all_files():

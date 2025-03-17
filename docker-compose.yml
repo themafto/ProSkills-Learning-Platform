@@ -36,6 +36,28 @@ services:
     networks:
       - app_network
 
+  redis: # Add Redis service
+    image: redis:latest  # Use the latest Redis image
+    restart: on-failure
+    ports:
+      - "6379:6379"  # Expose Redis port
+    networks:
+      - app_network
+
+  celery: # Your Celery worker service
+    build:
+      context: .  # Must be the same context as your app to share dependencies!
+      dockerfile: Dockerfile # Must be the same Dockerfile as your app to share dependencies
+    command: celery -A backend.celery_app worker -l info -E # -E to process events like email sends
+    depends_on:
+      - redis # Depends on redis
+      - app  # Add dependency on the app to ensure it is started
+    env_file:
+      - .env  # Use .env for shared environment variables if needed
+    networks:
+      - app_network
+
+
   app:
     build:
       context: .
@@ -43,12 +65,13 @@ services:
     restart: on-failure
     container_name: fastapi_app
     ports:
-      - "80:5000"
+      - "8000:5000"
     env_file:
       - .env
     depends_on:
       - db
       - alembic
+      - redis
     networks:
       - app_network
 
