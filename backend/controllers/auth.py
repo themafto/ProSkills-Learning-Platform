@@ -202,5 +202,6 @@ async def reset_password(token: str, new_password: str, db: Session = Depends(ge
     user.reset_token = None
     user.reset_token_expires_at = None
     db.commit()
+    db.refresh(user)
 
     return {"message": "Password was changed!"}
