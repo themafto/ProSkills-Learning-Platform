@@ -44,16 +44,16 @@ services:
     networks:
       - app_network
 
-  celery: # Your Celery worker service
+  celery:
     build:
-      context: .  # Must be the same context as your app to share dependencies!
+      context: .  # Must be the same context as your app to share dependencies
       dockerfile: Dockerfile # Must be the same Dockerfile as your app to share dependencies
-    command: celery -A backend.celery_app worker -l info -E # -E to process events like email sends
+    command: celery -A backend.celery_app worker -l info -E # -E to process events
     depends_on:
-      - redis # Depends on redis
-      - app  # Add dependency on the app to ensure it is started
+      - redis
+      - app
     env_file:
-      - .env  # Use .env for shared environment variables if needed
+      - .env  # Use .env for shared environment variables
     networks:
       - app_network
 

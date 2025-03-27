@@ -95,36 +95,19 @@ async def update_course(
     return course
 
 @router.get("", response_model=List[CourseInfo])
-async def get_all_courses(
-    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user_jwt)):
-
+async def get_all_courses(db: Session = Depends(get_db)):
     try:
         courses = db.query(Course).options(joinedload(Course.teacher)).all()
 
-        # Check enrollment for each course
         courses_info = []
         for course in courses:
-            is_enrolled = False
-            if current_user: # Check if a user is on Course
-                enrollment = (
-                    db.query(Enrollment)
-                    .filter(
-                        Enrollment.user_id == current_user["user_id"],
-                        Enrollment.course_id == course.id,
-                    )
-                    .first()
-                )
-                if enrollment:
-                    is_enrolled = True
-
             courses_info.append(
                 CourseInfo(
-                    id=course.id,  # Access using .id
-                    title=course.title,  # Access using .title
-                    category=course.category,  # Access using .category
-                    rating=course.rating,  # Access using .rating
-                    teacher_id=course.teacher_id,  # Access using .teacher_id
-                    is_enrolled=is_enrolled
+                    id=course.id,
+                    title=course.title,
+                    category=course.category,
+                    rating=course.rating,
+                    teacher_id=course.teacher_id,
                 )
             )
         return courses_info
@@ -142,9 +125,13 @@ async def delete_course(
     if current_user.get('role') not in ['teacher', 'admin']:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    course = db.query(Course).filter(Course.id == course_id).delete()
-    if not course:
+    course = db.query(Course).filter(Course.id == course_id)
+    if not db.query(Course).filter(Course.id == course_id).first():  # Check if the course exists
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+
+    course.delete()
+    db.commit()
+
     return {"message": "Course deleted successfully"}
 
 @router.post("/{course_id}/rate", response_model=RatingResponse, status_code=201)

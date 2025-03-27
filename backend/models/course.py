@@ -21,3 +21,19 @@ class Course(BaseModel):
 
     teacher = relationship("OurUsers", back_populates="courses_teaching", foreign_keys=[teacher_id])
     students = relationship("OurUsers", secondary=Enrollment.__table__, back_populates="courses")
+    sections = relationship("Section", back_populates="course", cascade="all, delete-orphan", order_by="Section.order")
+    assignments = relationship("Assignment", back_populates="course", cascade="all, delete-orphan")
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "category": self.category,
+            "description": self.description,
+            "lessons_count": self.lessons_count,
+            "lessons_duration": self.lessons_duration,
+            "rating": self.rating,
+            "ratings_count": self.ratings_count,
+            "files": self.files,
+            "teacher_id": self.teacher_id
+        }
