@@ -66,12 +66,10 @@ ALLOWED_CONTENT_TYPES = [
 
 
 # Helper function to check file type and size
-async def validate_file(file: UploadFile):
-    # Check if file exists
+async def validate_file(file: Optional[UploadFile] = None):
+    # If no file provided, return None to indicate optional file
     if not file or not file.filename:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="No file provided"
-        )
+        return None
 
     # Check content type
     content_type = file.content_type
@@ -105,7 +103,7 @@ async def validate_file(file: UploadFile):
 def check_enrollment(db: Session, user_id: int, course_id: int) -> bool:
     return (
         db.query(Enrollment)
-        .filter(Enrollment.student_id == user_id, Enrollment.course_id == course_id)
+        .filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id)
         .first()
         is not None
     )
@@ -645,7 +643,7 @@ def get_file_from_s3(file_key: str) -> tuple[StreamingResponse, str]:
             detail=f"S3 service error: {str(e)}"
         )
 
-@router.get("/download/{file_key}")
+@router.get("/download/{file_key:path}")
 async def download_file(
     file_key: str,
     db: Session = Depends(get_db),
@@ -665,12 +663,32 @@ async def download_file(
     Raises:
         HTTPException: If file access not allowed or file not found
     """
-    # Validate access
-    course, _ = validate_file_access(db, file_key, current_user)
+    try:
+        # Get file from S3
+        response = s3.get_object(Bucket=BUCKET_NAME, Key=file_key)
+        content_type = response["ContentType"]
+        filename = file_key.split("/")[-1]
 
-    # Get and return file
-    response, _ = get_file_from_s3(file_key)
-    return response
+        def iterfile():
+            yield from response["Body"]
+
+        return StreamingResponse(
+            iterfile(),
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+    except s3.exceptions.NoSuchKey:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"S3 service error: {str(e)}"
+        )
 
 
 @router.delete(

@@ -119,9 +119,7 @@ async def create_assignment_with_file(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user_jwt),
 ):
-    """
-    Create a new assignment with an optional file upload in a single request.
-    """
+    """Create a new assignment with an optional file upload"""
     # Check if the user is a teacher or admin
     if current_user.get("role") not in ["teacher", "admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
