@@ -126,14 +126,15 @@ async def login_for_access_token(
     
     refresh_token = create_refresh_token(user.id)
 
-    # Set cookies
+    # Set cookies with development-friendly settings
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         samesite="lax",
         max_age=1200,  # 20 minutes in seconds
-        secure=False   # Set to True in production with HTTPS
+        secure=False,  # Allow HTTP in development
+        path="/"       # Ensure cookie is sent to all endpoints
     )
     
     response.set_cookie(
@@ -142,7 +143,8 @@ async def login_for_access_token(
         httponly=True,
         samesite="lax",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,  # days to seconds
-        secure=False   # Set to True in production with HTTPS
+        secure=False,  # Allow HTTP in development
+        path="/"       # Ensure cookie is sent to all endpoints
     )
 
     return {"message": "Login successful"}

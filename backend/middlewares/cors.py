@@ -3,26 +3,27 @@ from starlette.middleware.cors import CORSMiddleware
 
 
 def setup_cors(app):
-    # Default development origins
-    default_origins = [
-        "http://localhost:5173",    # Vite default
-        "http://localhost:3000",    # React default
+    # Development origins
+    dev_origins = [
+        "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
     
-    # Get additional origins from environment or use defaults
-    allow_origins = os.environ.get("ALLOWED_ORIGINS", "").split(",")
-    allow_origins = [origin.strip() for origin in allow_origins if origin.strip()]
+    # Get additional origins from environment
+    env_origins = os.environ.get("ALLOWED_ORIGINS", "").split(",")
+    env_origins = [origin.strip() for origin in env_origins if origin.strip()]
     
-    # Combine default and environment origins
-    origins = default_origins + allow_origins if allow_origins else default_origins
+    # Combine all origins
+    all_origins = list(set(dev_origins + env_origins))
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
+        allow_origins=all_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["*"]
+        expose_headers=["*"],
+        max_age=3600,
     )
