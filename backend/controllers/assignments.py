@@ -4,6 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from starlette import status
+from fastapi.responses import StreamingResponse
 
 from backend.dependencies.getdb import get_db
 from backend.models import Course, OurUsers, Section, AssignmentProgress
@@ -366,7 +367,19 @@ async def get_course_assignments(
     # Get file information for each assignment
     result = []
     for assignment in assignments:
-        assignment_dict = assignment.to_dict()
+        assignment_dict = {
+            "id": assignment.id,
+            "course_id": assignment.course_id,
+            "section_id": assignment.section_id,
+            "title": assignment.title,
+            "description": assignment.description,
+            "due_date": assignment.due_date,
+            "teacher_comments": assignment.teacher_comments,
+            "order": assignment.order,
+            "created_at": assignment.created_at,
+            "updated_at": assignment.updated_at,
+            "files": []
+        }
         
         # Get files for this assignment from S3
         try:
@@ -376,20 +389,11 @@ async def get_course_assignments(
             if "Contents" in response:
                 files = []
                 for item in response["Contents"]:
-                    # Get the file content from S3
-                    file_response = s3.get_object(Bucket=BUCKET_NAME, Key=item["Key"])
-                    file_content = file_response["Body"].read()
-                    
-                    # Convert to base64
-                    file_base64 = base64.b64encode(file_content).decode('utf-8')
-                    
                     files.append({
                         "key": item["Key"],
                         "size": item["Size"],
                         "last_modified": item["LastModified"],
-                        "filename": item["Key"].split("/")[-1],
-                        "content": file_base64,
-                        "content_type": file_response.get("ContentType", "application/octet-stream")
+                        "filename": item["Key"].split("/")[-1]
                     })
                 assignment_dict["files"] = files
             else:
@@ -519,3 +523,61 @@ async def delete_assignment(
             db.commit()
 
     return {"message": "Assignment deleted successfully"}
+
+
+@router.get("/{assignment_id}/files/{file_key:path}", response_class=StreamingResponse)
+async def download_assignment_file(
+    course_id: int,
+    assignment_id: int,
+    file_key: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user_jwt),
+):
+    """Download a file associated with an assignment"""
+    # Check if assignment exists and belongs to the course
+    assignment = (
+        db.query(Assignment)
+        .filter(Assignment.id == assignment_id, Assignment.course_id == course_id)
+        .first()
+    )
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
+    # Check if user has permission to view (teacher, admin, or enrolled student)
+    user_id = current_user.get("user_id")
+    is_teacher = assignment.course.teacher_id == user_id
+    is_admin = current_user.get("role") == "admin"
+
+    if not (is_teacher or is_admin):
+        # Check if student is enrolled
+        is_enrolled = False
+        for student in assignment.course.students:
+            if student.id == user_id:
+                is_enrolled = True
+                break
+
+        if not is_enrolled:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to download this file",
+            )
+
+    try:
+        # Get file from S3
+        response = s3.get_object(Bucket=BUCKET_NAME, Key=file_key)
+        
+        def iterfile():
+            yield from response["Body"]
+
+        return StreamingResponse(
+            iterfile(),
+            media_type=response.get("ContentType", "application/octet-stream"),
+            headers={
+                "Content-Disposition": f'attachment; filename="{file_key.split("/")[-1]}"'
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"File not found: {str(e)}"
+        )

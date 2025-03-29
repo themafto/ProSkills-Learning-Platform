@@ -27,8 +27,6 @@ class AssignmentFile(BaseModel):
     size: int
     last_modified: datetime
     filename: str
-    content: str  # base64 encoded file content
-    content_type: str
 
 
 class AssignmentResponse(AssignmentBase):
