@@ -2,6 +2,7 @@ from typing import Any, Dict
 
 from pydantic_settings import BaseSettings
 
+
 class DatabaseSettings(BaseSettings):
     DATABASE_PORT: int
     POSTGRES_PASSWORD: str

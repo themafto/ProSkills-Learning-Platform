@@ -1,8 +1,10 @@
 from pydantic import BaseModel
 from datetime import datetime
 
+
 class CommentCreate(BaseModel):
     comment_text: str
+
 
 class CommentResponse(CommentCreate):
     id: int

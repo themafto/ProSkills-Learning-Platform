@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
+
 class AssignmentProgressBase(BaseModel):
     student_id: int
     assignment_id: int
@@ -12,8 +13,10 @@ class AssignmentProgressBase(BaseModel):
     completed_at: Optional[datetime] = None
     submitted_at: Optional[datetime] = None
 
+
 class AssignmentProgressCreate(AssignmentProgressBase):
     pass
+
 
 class AssignmentProgressUpdate(BaseModel):
     is_completed: Optional[bool] = None
@@ -23,13 +26,16 @@ class AssignmentProgressUpdate(BaseModel):
     completed_at: Optional[datetime] = None
     submitted_at: Optional[datetime] = None
 
+
 class AssignmentProgressInDB(AssignmentProgressBase):
     id: int
-    
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class AssignmentProgressResponse(AssignmentProgressInDB):
     pass
+
 
 class CourseProgressBase(BaseModel):
     student_id: int
@@ -38,18 +44,22 @@ class CourseProgressBase(BaseModel):
     total_assignments: int = 0
     last_activity: Optional[datetime] = None
 
+
 class CourseProgressCreate(CourseProgressBase):
     pass
+
 
 class CourseProgressUpdate(BaseModel):
     completed_assignments: Optional[int] = None
     total_assignments: Optional[int] = None
     last_activity: Optional[datetime] = None
 
+
 class CourseProgressInDB(CourseProgressBase):
     id: int
-    
+
     model_config = ConfigDict(from_attributes=True)
 
+
 class CourseProgressResponse(CourseProgressInDB):
-    completion_percentage: float 
+    completion_percentage: float

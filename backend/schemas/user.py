@@ -7,20 +7,18 @@ class CreateUserRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     first_name: str | None = None
     last_name: str | None = None
-    role: str = Field(default='student')
+    role: str = Field(default="student")
 
-
-
-    @field_validator('password')
+    @field_validator("password")
     def validate_password(cls, v):
         if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
+            raise ValueError("Password must be at least 8 characters long")
         if not re.search("[A-Z]", v):
-            raise ValueError('Password must contain at least one uppercase character')
+            raise ValueError("Password must contain at least one uppercase character")
         if not re.search("[a-z]", v):
-            raise ValueError('Password must contain at least one lowercase character')
+            raise ValueError("Password must contain at least one lowercase character")
         if not re.search("[0-9]", v):
-            raise ValueError('Password must contain at least one digit')
+            raise ValueError("Password must contain at least one digit")
         return v
 
     model_config = ConfigDict(from_attributes=True)
@@ -37,15 +35,17 @@ class UserResponse(BaseModel):
     class Config:
         orm_mode = True
 
+
 class UserLoginResponse(BaseModel):
     email: EmailStr
     id: int
     role: str
     first_name: str
-    last_name:str
+    last_name: str
 
     class Config:
         orm_mode = True
+
 
 class UserLoginResponseAuth(BaseModel):
     email: EmailStr
@@ -54,6 +54,7 @@ class UserLoginResponseAuth(BaseModel):
 
     class Config:
         orm_mode = True
+
 
 class TeacherOfCourse(BaseModel):
     first_name: str | None = None

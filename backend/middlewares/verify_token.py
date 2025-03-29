@@ -1,4 +1,4 @@
-from fastapi import  HTTPException, Cookie
+from fastapi import HTTPException, Cookie
 from jose import jwt, JWTError
 
 from backend.oauth2 import ALGORITHM, SECRET_KEY

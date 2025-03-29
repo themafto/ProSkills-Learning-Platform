@@ -4,6 +4,7 @@ from datetime import datetime
 
 from backend.schemas.comment import CommentResponse
 
+
 class AssignmentBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -11,9 +12,11 @@ class AssignmentBase(BaseModel):
     teacher_comments: Optional[str] = None
     order: Optional[int] = 0
 
+
 class AssignmentCreate(AssignmentBase):
     course_id: int
     section_id: Optional[int] = None
+
 
 class AssignmentUpdate(BaseModel):
     title: Optional[str] = None
@@ -23,20 +26,24 @@ class AssignmentUpdate(BaseModel):
     section_id: Optional[int] = None
     order: Optional[int] = None
 
+
 class AssignmentInDB(AssignmentBase):
     id: int
     course_id: int
     section_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class AssignmentResponse(AssignmentInDB):
     pass
 
+
 class AssignmentWithCommentsResponse(AssignmentResponse):
     comments: List[CommentResponse]
+
 
 class AssignmentWithProgressResponse(AssignmentResponse):
     is_completed: bool = False

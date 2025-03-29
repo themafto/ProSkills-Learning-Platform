@@ -1,7 +1,15 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 
-from backend.controllers import auth, courses, students, assignments, filesForCourse, sections, progress
+from backend.controllers import (
+    auth,
+    courses,
+    students,
+    assignments,
+    filesForCourse,
+    sections,
+    progress,
+)
 from backend.database import Base, engine
 from backend.dependencies.getdb import get_db
 from backend.middlewares.cors import setup_cors
@@ -19,6 +27,7 @@ app.include_router(filesForCourse.router)
 app.include_router(sections.router)
 app.include_router(progress.router)
 
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize application data on startup"""
@@ -28,4 +37,3 @@ async def startup_event():
         create_admin_user(db)
     finally:
         db.close()
-

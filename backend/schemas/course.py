@@ -13,8 +13,8 @@ class CourseBase(BaseModel):
     category: Optional[str] = None
     rating: Optional[int] = None
     lessons_count: int
-    lessons_duration: int ### in minutes for example ###
-    files: List[str] = None ### for URLs to files(pdf)
+    lessons_duration: int  ### in minutes for example ###
+    files: List[str] = None  ### for URLs to files(pdf)
 
 
 class CourseResponse(BaseModel):
@@ -27,17 +27,18 @@ class CourseResponse(BaseModel):
     ratings_count: int
     lessons_count: int
     lessons_duration: int
-    files: Optional[List[str]] = None ### Updated
+    files: Optional[List[str]] = None  ### Updated
     teacher: Optional[TeacherOfCourse] = None
     sections: Optional[List[SectionWithAssignments]] = None
-    
+
     model_config = ConfigDict(from_attributes=True)
-    
-    @validator('files', pre=True)
+
+    @validator("files", pre=True)
     def validate_files(cls, files):
         if files is None:
             return []
         return files
+
 
 class CourseCreate(CourseBase):
     pass
@@ -56,6 +57,7 @@ class CourseWithProgress(CourseResponse):
     completed_assignments: int = 0
     total_assignments: int = 0
     completion_percentage: float = 0.0
+
 
 class CourseInfo(BaseModel):
     id: int
