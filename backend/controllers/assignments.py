@@ -411,11 +411,18 @@ async def get_course_assignments(
 async def update_assignment(
     course_id: int,
     assignment_id: int,
-    assignment_data: AssignmentUpdate,
+    title: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    due_date: Optional[datetime] = Form(None),
+    teacher_comments: Optional[str] = Form(None),
+    section_id: Optional[int] = Form(None),
+    order: Optional[int] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    delete_files: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user_jwt),
 ):
-    """Update an assignment"""
+    """Update an assignment with optional file upload"""
     # Check if the user is a teacher or admin
     if current_user.get("role") not in ["teacher", "admin"]:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -441,12 +448,12 @@ async def update_assignment(
         )
 
     # Validate section_id if being updated
-    if assignment_data.section_id is not None:
-        if assignment_data.section_id > 0:  # Allow setting to None by using 0
+    if section_id is not None:
+        if section_id > 0:  # Allow setting to None by using 0
             section = (
                 db.query(Section)
                 .filter(
-                    Section.id == assignment_data.section_id,
+                    Section.id == section_id,
                     Section.course_id == course_id,
                 )
                 .first()
@@ -456,18 +463,100 @@ async def update_assignment(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Section not found or does not belong to this course",
                 )
+            assignment.section_id = section_id
         else:
-            assignment_data.section_id = None  # Convert 0 to None
+            assignment.section_id = None
 
-    # Update assignment
-    update_data = assignment_data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(assignment, key, value)
+    # Update assignment fields if provided
+    if title is not None:
+        assignment.title = title
+    if description is not None:
+        assignment.description = description
+    if due_date is not None:
+        assignment.due_date = due_date
+    if teacher_comments is not None:
+        assignment.teacher_comments = teacher_comments
+    if order is not None:
+        assignment.order = order
 
-    db.commit()
-    db.refresh(assignment)
+    # Handle file operations
+    try:
+        # Delete existing files if requested
+        if delete_files:
+            prefix = f"assignments/{assignment_id}/task/"
+            response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+            if "Contents" in response:
+                for item in response["Contents"]:
+                    s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
 
-    return assignment
+        # Upload new file if provided
+        if file:
+            # Validate file
+            file_content = await validate_file(file)
+
+            # Create a structured key for assignments with uniqueness
+            key = f"assignments/{assignment_id}/task/{uuid.uuid4().hex}_{file.filename}"
+
+            # Upload to S3
+            s3.put_object(
+                Bucket=BUCKET_NAME,
+                Key=key,
+                Body=file_content,
+                ContentType=file.content_type,
+            )
+
+    except Exception as e:
+        print(f"Error handling files for assignment {assignment_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error handling files: {str(e)}",
+        )
+
+    # Commit changes to database
+    try:
+        db.commit()
+        db.refresh(assignment)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating assignment: {str(e)}",
+        )
+
+    # Get updated assignment with file information
+    assignment_dict = {
+        "id": assignment.id,
+        "course_id": assignment.course_id,
+        "section_id": assignment.section_id,
+        "title": assignment.title,
+        "description": assignment.description,
+        "due_date": assignment.due_date,
+        "teacher_comments": assignment.teacher_comments,
+        "order": assignment.order,
+        "created_at": assignment.created_at,
+        "updated_at": assignment.updated_at,
+        "files": []
+    }
+
+    # Get files for this assignment from S3
+    try:
+        prefix = f"assignments/{assignment_id}/task/"
+        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+        
+        if "Contents" in response:
+            files = []
+            for item in response["Contents"]:
+                files.append({
+                    "key": item["Key"],
+                    "size": item["Size"],
+                    "last_modified": item["LastModified"],
+                    "filename": item["Key"].split("/")[-1]
+                })
+            assignment_dict["files"] = files
+    except Exception as e:
+        print(f"Error getting files for assignment {assignment_id}: {str(e)}")
+
+    return AssignmentResponse(**assignment_dict)
 
 
 @router.delete("/{assignment_id}", status_code=status.HTTP_200_OK)

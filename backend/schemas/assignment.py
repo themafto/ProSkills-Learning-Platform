@@ -49,6 +49,17 @@ class AssignmentUpdate(BaseModel):
     order: Optional[int] = None
 
 
+class AssignmentUpdateWithFile(BaseModel):
+    title: Optional[str] = Form(None)
+    description: Optional[str] = Form(None)
+    due_date: Optional[datetime] = Form(None)
+    teacher_comments: Optional[str] = Form(None)
+    section_id: Optional[int] = Form(None)
+    order: Optional[int] = Form(0)
+    file: Optional[UploadFile] = File(None)
+    delete_files: Optional[bool] = Form(False)  # Option to delete existing files
+
+
 class AssignmentInDB(AssignmentBase):
     id: int
     course_id: int
