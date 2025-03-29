@@ -2,7 +2,6 @@ import os
 from datetime import timezone, datetime, timedelta
 
 from fastapi import Depends, HTTPException, Form
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from pydantic import EmailStr
@@ -12,13 +11,14 @@ from starlette import status
 from backend.dependencies.getdb import get_db
 from backend.models import OurUsers
 from backend.services.token_blacklist import is_blacklisted
+from backend.security.json_bearer import OAuth2PasswordBearerWithJSON
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-oauth2_bearer = OAuth2PasswordBearer(
+oauth2_bearer = OAuth2PasswordBearerWithJSON(
     tokenUrl="auth/token",
     scheme_name="OAuth2",
-    description="Enter your email and password to login",
+    description="Enter your email and password as JSON to login",
     auto_error=True
 )
 
