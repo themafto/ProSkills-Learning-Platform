@@ -126,6 +126,7 @@ class TokenResponse(BaseModel):
 
 @router.post("/token", response_model=TokenResponse)
 async def login_for_access_token(
+    response: Response,
     login_data: UserLogin,
     db: Session = Depends(get_db)
 ):
@@ -142,6 +143,27 @@ async def login_for_access_token(
 
     access_token = create_access_token(
         user.email, user.id, user.role, timedelta(minutes=20)
+    )
+    
+    refresh_token = create_refresh_token(user.id)
+
+    # Set cookies
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        samesite="lax",
+        max_age=1200,  # 20 minutes in seconds
+        secure=True    # Only send cookie over HTTPS
+    )
+    
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="lax",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,  # days to seconds
+        secure=True    # Only send cookie over HTTPS
     )
 
     return {
