@@ -18,7 +18,7 @@ bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_bearer = OAuth2PasswordBearer(
     tokenUrl="auth/token",
     scheme_name="OAuth2",
-    description="Enter your email as username and your password",
+    description="Enter your email and password to login",
     auto_error=True
 )
 

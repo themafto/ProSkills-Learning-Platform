@@ -1,15 +1,13 @@
 import hashlib
 from datetime import timedelta, datetime, timezone
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status, Form
 
 from jose import jwt
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from fastapi import Cookie, Depends, HTTPException, Response, status
-from typing import Optional
 from fastapi.security import OAuth2PasswordRequestForm
 
 
@@ -128,15 +126,14 @@ class TokenResponse(BaseModel):
 
 @router.post("/token", response_model=TokenResponse)
 async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    email: str = Form(...),
+    password: str = Form(...),
     db: Session = Depends(get_db)
 ):
     """
     Login using email and password to get access token.
-    
-    Note: Enter your email in the username field
     """
-    user = authenticate_user(form_data.username, form_data.password, db)
+    user = authenticate_user(email, password, db)
     if not user:
         raise HTTPException(
             status_code=401,
