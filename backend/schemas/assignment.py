@@ -62,9 +62,13 @@ class AssignmentInDB(AssignmentBase):
 class AssignmentWithCommentsResponse(AssignmentResponse):
     comments: List[CommentResponse] = []
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class AssignmentWithProgressResponse(AssignmentResponse):
     is_completed: bool
     submission_file_key: Optional[str] = None
     score: Optional[float] = None
     feedback: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)

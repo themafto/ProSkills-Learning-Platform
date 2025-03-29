@@ -451,7 +451,7 @@ async def update_assignment(
     teacher_comments: Optional[str] = Form(None),
     section_id: Optional[int] = Form(None),
     order: Optional[int] = Form(None),
-    file: Optional[UploadFile] = File(None),
+    file: Optional[UploadFile] = None,
     delete_files: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user_jwt),
@@ -524,7 +524,7 @@ async def update_assignment(
                     s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
 
         # Upload new file if provided
-        if file:
+        if file and file.filename:  # Check both file and filename
             # Validate file
             file_content = await validate_file(file)
 
@@ -541,10 +541,8 @@ async def update_assignment(
 
     except Exception as e:
         print(f"Error handling files for assignment {assignment_id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error handling files: {str(e)}",
-        )
+        # Don't raise exception for file operations since they're optional
+        pass
 
     # Commit changes to database
     try:
