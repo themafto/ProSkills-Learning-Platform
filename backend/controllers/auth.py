@@ -126,14 +126,13 @@ class TokenResponse(BaseModel):
 
 @router.post("/token", response_model=TokenResponse)
 async def login_for_access_token(
-    email: str = Form(...),
-    password: str = Form(...),
+    login_data: UserLogin,
     db: Session = Depends(get_db)
 ):
     """
     Login using email and password to get access token.
     """
-    user = authenticate_user(email, password, db)
+    user = authenticate_user(login_data.email, login_data.password, db)
     if not user:
         raise HTTPException(
             status_code=401,
