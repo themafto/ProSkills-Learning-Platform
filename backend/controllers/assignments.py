@@ -106,7 +106,7 @@ async def create_assignment(
     return new_assignment
 
 
-@router.post("/with-file", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
+@router.post("/with/file", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
 async def create_assignment_with_file(
     course_id: int,
     title: str = Form(...),
@@ -182,7 +182,7 @@ async def create_assignment_with_file(
         )
 
     # Handle file upload if provided
-    if file:
+    if file and file.filename:  # Only process if file is provided and has a filename
         try:
             # Validate file
             file_content = await validate_file(file)
@@ -199,6 +199,7 @@ async def create_assignment_with_file(
 
         except Exception as e:
             print(f"Error uploading file: {str(e)}")
+            # Don't raise an exception here since file is optional
 
     # Update total assignments count in all student progress records
     course_students = course.students
@@ -216,7 +217,40 @@ async def create_assignment_with_file(
             progress.total_assignments += 1
             db.commit()
 
-    return new_assignment
+    # Prepare response with file information
+    assignment_dict = {
+        "id": new_assignment.id,
+        "course_id": new_assignment.course_id,
+        "section_id": new_assignment.section_id,
+        "title": new_assignment.title,
+        "description": new_assignment.description,
+        "due_date": new_assignment.due_date,
+        "teacher_comments": new_assignment.teacher_comments,
+        "order": new_assignment.order,
+        "created_at": new_assignment.created_at,
+        "updated_at": new_assignment.updated_at,
+        "files": []
+    }
+
+    # Get files for this assignment from S3 if any were uploaded
+    try:
+        prefix = f"assignments/{new_assignment.id}/task/"
+        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+        
+        if "Contents" in response:
+            files = []
+            for item in response["Contents"]:
+                files.append({
+                    "key": item["Key"],
+                    "size": item["Size"],
+                    "last_modified": item["LastModified"],
+                    "filename": item["Key"].split("/")[-1]
+                })
+            assignment_dict["files"] = files
+    except Exception as e:
+        print(f"Error getting files for assignment {new_assignment.id}: {str(e)}")
+
+    return AssignmentResponse(**assignment_dict)
 
 
 @router.get("/{assignment_id}", response_model=AssignmentWithCommentsResponse)
