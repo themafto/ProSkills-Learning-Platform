@@ -30,11 +30,19 @@ class AssignmentProgress(BaseModel):
     student = relationship("OurUsers", backref="assignment_progress")
     assignment = relationship("Assignment", backref="student_progress")
 
+    @property
+    def course_id(self) -> int:
+        """Get the course_id through the assignment relationship"""
+        if self.assignment:
+            return self.assignment.course_id
+        return None
+
     def to_dict(self):
         return {
             "id": self.id,
             "student_id": self.student_id,
             "assignment_id": self.assignment_id,
+            "course_id": self.course_id,
             "is_completed": self.is_completed,
             "submission_file_key": self.submission_file_key,
             "score": self.score,

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, validator
 class AssignmentProgressBase(BaseModel):
     student_id: int
     assignment_id: int
+    course_id: Optional[int] = None
     is_completed: bool = False
     submission_file_key: Optional[str] = None
     score: Optional[int] = None

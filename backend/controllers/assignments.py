@@ -7,7 +7,7 @@ from starlette import status
 from fastapi.responses import StreamingResponse
 
 from backend.dependencies.getdb import get_db
-from backend.models import Course, OurUsers, Section, AssignmentProgress
+from backend.models import Course, OurUsers, Section, AssignmentProgress, CourseProgress
 from backend.models.assignment import Assignment
 from backend.models.comment import Comment
 from backend.oauth2 import get_current_user_jwt
@@ -90,18 +90,28 @@ async def create_assignment(
     # Update total assignments count in all student progress records
     course_students = course.students
     for student in course_students:
-        progress = (
-            db.query(AssignmentProgress)
+        # Get or create course progress
+        course_progress = (
+            db.query(CourseProgress)
             .filter(
-                AssignmentProgress.student_id == student.id,
-                AssignmentProgress.course_id == course_id,
+                CourseProgress.student_id == student.id,
+                CourseProgress.course_id == course_id,
             )
             .first()
         )
-
-        if progress:
-            progress.total_assignments += 1
-            db.commit()
+        
+        if not course_progress:
+            course_progress = CourseProgress(
+                student_id=student.id,
+                course_id=course_id,
+                completed_assignments=0,
+                total_assignments=1
+            )
+            db.add(course_progress)
+        else:
+            course_progress.total_assignments += 1
+        
+        db.commit()
 
     return new_assignment
 
@@ -202,18 +212,28 @@ async def create_assignment_with_file(
     # Update total assignments count in all student progress records
     course_students = course.students
     for student in course_students:
-        progress = (
-            db.query(AssignmentProgress)
+        # Get or create course progress
+        course_progress = (
+            db.query(CourseProgress)
             .filter(
-                AssignmentProgress.student_id == student.id,
-                AssignmentProgress.course_id == course_id,
+                CourseProgress.student_id == student.id,
+                CourseProgress.course_id == course_id,
             )
             .first()
         )
-
-        if progress:
-            progress.total_assignments += 1
-            db.commit()
+        
+        if not course_progress:
+            course_progress = CourseProgress(
+                student_id=student.id,
+                course_id=course_id,
+                completed_assignments=0,
+                total_assignments=1
+            )
+            db.add(course_progress)
+        else:
+            course_progress.total_assignments += 1
+        
+        db.commit()
 
     # Prepare response with file information
     assignment_dict = {
