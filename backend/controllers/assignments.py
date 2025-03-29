@@ -105,7 +105,7 @@ async def create_assignment(
     return new_assignment
 
 
-@router.post("/with/file", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
+@router.post("/with-file", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
 async def create_assignment_with_file(
     course_id: int,
     title: str = Form(...),
