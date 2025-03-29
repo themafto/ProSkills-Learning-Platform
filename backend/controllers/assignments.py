@@ -449,7 +449,7 @@ async def update_assignment(
     teacher_comments: Optional[str] = Form(None),
     section_id: Optional[int] = Form(None),
     order: Optional[int] = Form(None),
-    file: Optional[UploadFile] = None,
+    file: Optional[UploadFile] = File(None),
     delete_files: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user_jwt),

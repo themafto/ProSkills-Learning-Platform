@@ -78,4 +78,7 @@ class CourseProgress(BaseModel):
     def completion_percentage(self):
         if self.total_assignments == 0:
             return 0.0
-        return float(round((self.completed_assignments / self.total_assignments) * 100, 2))
+        try:
+            return round((self.completed_assignments / self.total_assignments) * 100, 2)
+        except (TypeError, ZeroDivisionError):
+            return 0.0
