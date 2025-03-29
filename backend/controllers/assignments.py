@@ -1,6 +1,7 @@
 from typing import List, Optional
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from starlette import status
 
@@ -15,7 +16,11 @@ from backend.schemas.assignment import (
     AssignmentResponse,
     AssignmentUpdate,
     AssignmentWithProgressResponse,
+    AssignmentWithFileCreate,
 )
+from backend.schemas.file import FileUploadResponse
+from backend.controllers.filesForCourse import validate_file, s3, BUCKET_NAME
+import uuid
 
 router = APIRouter(
     prefix="/courses/{course_id}/assignments",
@@ -79,6 +84,118 @@ async def create_assignment(
         raise HTTPException(
             status_code=500, detail=f"Error creating assignment: {str(e)}"
         )
+
+    # Update total assignments count in all student progress records
+    course_students = course.students
+    for student in course_students:
+        progress = (
+            db.query(AssignmentProgress)
+            .filter(
+                AssignmentProgress.student_id == student.id,
+                AssignmentProgress.course_id == course_id,
+            )
+            .first()
+        )
+
+        if progress:
+            progress.total_assignments += 1
+            db.commit()
+
+    return new_assignment
+
+
+@router.post("/with-file", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
+async def create_assignment_with_file(
+    course_id: int,
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    due_date: Optional[datetime] = Form(None),
+    teacher_comments: Optional[str] = Form(None),
+    section_id: Optional[int] = Form(None),
+    order: Optional[int] = Form(0),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user_jwt),
+):
+    """
+    Create a new assignment with an optional file upload in a single request.
+    """
+    # Check if the user is a teacher or admin
+    if current_user.get("role") not in ["teacher", "admin"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Check if the course exists AND belongs to the teacher (or if the user is an admin)
+    course = (
+        db.query(Course)
+        .filter(Course.id == course_id)
+        .filter(
+            (Course.teacher_id == current_user["user_id"])
+            | (current_user.get("role") == "admin")
+        )
+        .first()
+    )
+    if not course:
+        raise HTTPException(
+            status_code=404, detail="Course not found or you don't have permission."
+        )
+
+    # Validate section_id if provided
+    if section_id:
+        section = (
+            db.query(Section)
+            .filter(
+                Section.id == section_id, Section.course_id == course_id
+            )
+            .first()
+        )
+        if not section:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Section not found or does not belong to this course",
+            )
+
+    # Create new assignment
+    new_assignment = Assignment(
+        title=title,
+        description=description,
+        due_date=due_date,
+        teacher_comments=teacher_comments,
+        section_id=section_id,
+        order=order,
+        course_id=course_id
+    )
+
+    db.add(new_assignment)
+    try:
+        db.commit()
+        db.refresh(new_assignment)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Error creating assignment: {str(e)}"
+        )
+
+    # Handle file upload if provided
+    if file:
+        try:
+            # Validate file
+            file_content = await validate_file(file)
+
+            # Create a structured key for assignments with uniqueness
+            key = f"assignments/{new_assignment.id}/task/{uuid.uuid4().hex}_{file.filename}"
+
+            # Upload directly from memory to S3
+            s3.put_object(
+                Bucket=BUCKET_NAME,
+                Key=key,
+                Body=file_content,
+                ContentType=file.content_type,
+            )
+
+        except Exception as e:
+            # If file upload fails, we should still keep the assignment
+            # but log the error or handle it appropriately
+            print(f"Error uploading file: {str(e)}")
 
     # Update total assignments count in all student progress records
     course_students = course.students

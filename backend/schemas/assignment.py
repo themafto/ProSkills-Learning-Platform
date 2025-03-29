@@ -1,6 +1,7 @@
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from fastapi import UploadFile
 
 from backend.schemas.comment import CommentResponse
 
@@ -15,6 +16,20 @@ class AssignmentBase(BaseModel):
 
 class AssignmentCreate(AssignmentBase):
     section_id: Optional[int] = None
+
+
+class AssignmentWithFileCreate(AssignmentCreate):
+    file: Optional[UploadFile] = None
+
+
+class AssignmentResponse(AssignmentBase):
+    id: int
+    course_id: int
+    section_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AssignmentUpdate(BaseModel):
@@ -36,16 +51,12 @@ class AssignmentInDB(AssignmentBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class AssignmentResponse(AssignmentInDB):
-    pass
-
-
 class AssignmentWithCommentsResponse(AssignmentResponse):
-    comments: List[CommentResponse]
+    comments: List[CommentResponse] = []
 
 
 class AssignmentWithProgressResponse(AssignmentResponse):
-    is_completed: bool = False
+    is_completed: bool
     submission_file_key: Optional[str] = None
-    score: Optional[int] = None
+    score: Optional[float] = None
     feedback: Optional[str] = None
