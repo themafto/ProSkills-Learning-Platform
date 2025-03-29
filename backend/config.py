@@ -17,7 +17,13 @@ class RedisSettings(BaseSettings):
     REDIS_PORT: int
 
 
-class AppSettings(DatabaseSettings, RedisSettings):
+class AWSSettings(BaseSettings):
+    ACCESS_KEY_ID: str
+    SECRET_ACCESS_KEY: str
+    BUCKET_NAME: str = "files-for-team-project"  # Default value
+
+
+class AppSettings(DatabaseSettings, RedisSettings, AWSSettings):
     class Config:
         env_file = "./.env"
         extra = "allow"

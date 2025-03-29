@@ -1,45 +1,35 @@
 from datetime import datetime, timedelta
 import redis
+import os
 from backend.config import RedisSettings
 
 # Initialize Redis settings
 redis_settings = RedisSettings()
 
-# Create Redis client
-redis_client = redis.Redis(
-    host=redis_settings.REDIS_HOST,
-    port=redis_settings.REDIS_PORT,
-    password=redis_settings.REDIS_PASSWORD,
-    decode_responses=True
-)
+# Make Redis client optional
+redis_client = None
+try:
+    redis_client = redis.Redis(
+        host=redis_settings.REDIS_HOST,
+        port=redis_settings.REDIS_PORT,
+        password=redis_settings.REDIS_PASSWORD,
+        decode_responses=True
+    )
+    # Test the connection
+    redis_client.ping()
+except (redis.ConnectionError, redis.AuthenticationError, Exception):
+    print("Warning: Redis not available. Token blacklisting will be disabled.")
+    redis_client = None
 
 def add_to_blacklist(token: str, expires_in: int) -> None:
-    """
-    Add a token to the blacklist with expiration time.
-    
-    Args:
-        token: The JWT token to blacklist
-        expires_in: Time in seconds until the token expires
-    """
-    redis_client.setex(f"blacklist_token:{token}", expires_in, "1")
+    if redis_client:
+        redis_client.setex(f"blacklist_token:{token}", expires_in, "1")
 
 def is_blacklisted(token: str) -> bool:
-    """
-    Check if a token is blacklisted.
-    
-    Args:
-        token: The JWT token to check
-        
-    Returns:
-        bool: True if token is blacklisted, False otherwise
-    """
-    return redis_client.exists(f"blacklist_token:{token}") == 1
+    if redis_client:
+        return redis_client.exists(f"blacklist_token:{token}") == 1
+    return False
 
 def remove_from_blacklist(token: str) -> None:
-    """
-    Remove a token from the blacklist.
-    
-    Args:
-        token: The JWT token to remove from blacklist
-    """
-    redis_client.delete(f"blacklist_token:{token}") 
+    if redis_client:
+        redis_client.delete(f"blacklist_token:{token}") 

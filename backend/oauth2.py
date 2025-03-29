@@ -1,8 +1,8 @@
 import os
 from datetime import timezone, datetime, timedelta
 
-from fastapi import Depends, HTTPException, Cookie
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, Form
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from pydantic import EmailStr
@@ -15,14 +15,16 @@ from backend.services.token_blacklist import is_blacklisted
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
-
+oauth2_bearer = OAuth2PasswordBearer(
+    tokenUrl="auth/token",
+    scheme_name="OAuth2",
+    description="Enter your email as username and your password",
+    auto_error=True
+)
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 ALGORITHM = os.environ.get("ALGORITHM")
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", 1))
-
 
 ### Check if user is in our DATABASE ###
 def authenticate_user(email: EmailStr, password: str, db):
@@ -41,9 +43,8 @@ def authenticate_user(email: EmailStr, password: str, db):
         )
     return user
 
-
 ### Create a JWT token for user ###
-def create_access_token(email: EmailStr, user_id: int, user_role: str, expires_delta: timedelta) -> object:
+def create_access_token(email: EmailStr, user_id: int, user_role: str, expires_delta: timedelta) -> str:
     encode = {
         "sub": email,
         "id": user_id,
@@ -54,18 +55,14 @@ def create_access_token(email: EmailStr, user_id: int, user_role: str, expires_d
     encode.update({"exp": expire})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
-
 def create_refresh_token(user_id: int):
     encode = {"id": user_id, "token_type": "refresh_token"}
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     encode.update({"exp": expire})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
-
 ### Checking if the JWT Token of our user is correct ###
-def get_current_user_jwt(
-    token: str = Depends(oauth2_bearer), db: Session = Depends(get_db)
-):
+async def get_current_user_jwt(token: str = Depends(oauth2_bearer), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

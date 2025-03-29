@@ -17,29 +17,28 @@ from backend.dependencies.getdb import get_db
 from backend.oauth2 import get_current_user_jwt
 from backend.models import Course, Assignment, Enrollment
 from backend.schemas.file import (
-    FileResponse as FileResponseSchema,
+    FileResponse,
     FileUploadResponse,
     FileDeleteResponse,
 )
 
-from backend.config import AWS_ACCESS_KEY, AWS_SECRET_KEY, BUCKET_NAME
 from backend.models import OurUsers
 from backend.models.enrollment import Enrollment
-from backend.schemas.file import FileResponseSchema
 
 from dotenv import load_dotenv
 
 load_dotenv()  # take environment variables from .env.
 
+router = APIRouter(prefix="/files", tags=["files"])
+
 s3 = boto3.client(
     "s3",
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY,
+    aws_access_key_id=os.getenv("ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("SECRET_ACCESS_KEY"),
 )
-BUCKET_NAME = BUCKET_NAME
+BUCKET_NAME = os.getenv("BUCKET_NAME", "files-for-team-project")  
 TEMP_DOWNLOAD_DIR = "temp_downloads"
 
-# Ensure temp directory exists
 os.makedirs(TEMP_DOWNLOAD_DIR, exist_ok=True)
 
 # File size limits (in bytes)
@@ -122,7 +121,7 @@ def check_course_ownership(db: Session, user_id: int, course_id: int) -> bool:
     )
 
 
-@router.get("", response_model=List[FileResponseSchema])
+@router.get("", response_model=List[FileResponse])
 async def get_all_files(
     course_id: Optional[int] = None,
     current_user: dict = Depends(get_current_user_jwt),
@@ -174,7 +173,7 @@ async def get_all_files(
         files = []
         for item in response.get("Contents", []):
             files.append(
-                FileResponseSchema(
+                FileResponse(
                     key=item["Key"],
                     size=item["Size"],
                     last_modified=item["LastModified"],
@@ -409,7 +408,7 @@ async def submit_assignment(
 
 
 @router.get(
-    "/assignments/{assignment_id}/task", response_model=List[FileResponseSchema]
+    "/assignments/{assignment_id}/task", response_model=List[FileResponse]
 )
 async def get_assignment_files(
     assignment_id: int,
@@ -458,7 +457,7 @@ async def get_assignment_files(
         files = []
         for item in response.get("Contents", []):
             files.append(
-                FileResponseSchema(
+                FileResponse(
                     key=item["Key"],
                     size=item["Size"],
                     last_modified=item["LastModified"],
@@ -475,7 +474,7 @@ async def get_assignment_files(
 
 
 @router.get(
-    "/assignments/{assignment_id}/submissions", response_model=List[FileResponseSchema]
+    "/assignments/{assignment_id}/submissions", response_model=List[FileResponse]
 )
 async def get_assignment_submissions(
     assignment_id: int,
@@ -541,7 +540,7 @@ async def get_assignment_submissions(
         files = []
         for item in response.get("Contents", []):
             files.append(
-                FileResponseSchema(
+                FileResponse(
                     key=item["Key"],
                     size=item["Size"],
                     last_modified=item["LastModified"],

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from fastapi import Cookie, Depends, HTTPException, Response, status
 from typing import Optional
+from fastapi.security import OAuth2PasswordRequestForm
 
 
 from backend.dependencies.getdb import get_db
@@ -108,39 +109,52 @@ class UserLogin(BaseModel):  # Create a Pydantic model for JSON request
     email: EmailStr
     password: str
 
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@example.com",
+                "password": "yourpassword"
+            }
+        }
 
-@router.post("/token", status_code=status.HTTP_200_OK)
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    role: str
+    email: str
+    id: int
+
+
+@router.post("/token", response_model=TokenResponse)
 async def login_for_access_token(
-    response: Response, login_data: UserLogin, db: Session = Depends(get_db)
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
 ):
-
-    user = authenticate_user(login_data.email, login_data.password, db)
+    """
+    Login using email and password to get access token.
+    
+    Note: Enter your email in the username field
+    """
+    user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(
-            status_code=401, detail="Incorrect login details"
-        )  # Simplified message
+            status_code=401,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     access_token = create_access_token(
         user.email, user.id, user.role, timedelta(minutes=20)
     )
-    refresh_token = create_refresh_token(user.id)
 
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,  # secure=True,
-        samesite="lax",
-        expires=20 * 60,
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,  # secure=True,
-        samesite="lax",
-        expires=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-    )
-
-    return {"message": "Login successful"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": user.role,
+        "email": user.email,
+        "id": user.id
+    }
 
 
 @router.post("/refresh", status_code=status.HTTP_200_OK)
@@ -161,7 +175,7 @@ async def refresh_token_get(
 
         user = (
             db.query(OurUsers).filter(OurUsers.id == user_id).first()
-        )  # Removed redundant query
+        ) 
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -183,11 +197,11 @@ async def refresh_token_get(
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=401, detail="Refresh token expired"
-        )  # Added status code
+        ) 
     except jwt.JWTError:
         raise HTTPException(
             status_code=401, detail="Invalid refresh token"
-        )  # Added status code
+        ) 
 
 
 @router.post("/register/teacher", status_code=status.HTTP_201_CREATED)
