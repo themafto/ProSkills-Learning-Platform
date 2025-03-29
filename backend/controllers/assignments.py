@@ -21,6 +21,7 @@ from backend.schemas.assignment import (
 from backend.schemas.file import FileUploadResponse
 from backend.controllers.filesForCourse import validate_file, s3, BUCKET_NAME
 import uuid
+import base64
 
 router = APIRouter(
     prefix="/courses/{course_id}/assignments",
@@ -104,7 +105,7 @@ async def create_assignment(
     return new_assignment
 
 
-@router.post("/with-file", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
+@router.post("/with/file", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
 async def create_assignment_with_file(
     course_id: int,
     title: str = Form(...),
@@ -139,6 +140,10 @@ async def create_assignment_with_file(
             status_code=404, detail="Course not found or you don't have permission."
         )
 
+    # Convert section_id=0 to None
+    if section_id == 0:
+        section_id = None
+
     # Validate section_id if provided
     if section_id:
         section = (
@@ -160,7 +165,7 @@ async def create_assignment_with_file(
         description=description,
         due_date=due_date,
         teacher_comments=teacher_comments,
-        section_id=section_id,
+        section_id=section_id,  # Now section_id will be None if it was 0
         order=order,
         course_id=course_id
     )
@@ -184,7 +189,6 @@ async def create_assignment_with_file(
             # Create a structured key for assignments with uniqueness
             key = f"assignments/{new_assignment.id}/task/{uuid.uuid4().hex}_{file.filename}"
 
-            # Upload directly from memory to S3
             s3.put_object(
                 Bucket=BUCKET_NAME,
                 Key=key,
@@ -193,8 +197,6 @@ async def create_assignment_with_file(
             )
 
         except Exception as e:
-            # If file upload fails, we should still keep the assignment
-            # but log the error or handle it appropriately
             print(f"Error uploading file: {str(e)}")
 
     # Update total assignments count in all student progress records
@@ -361,7 +363,44 @@ async def get_course_assignments(
     # Order by section and then by order within section
     assignments = query.order_by(Assignment.section_id, Assignment.order).all()
 
-    return assignments
+    # Get file information for each assignment
+    result = []
+    for assignment in assignments:
+        assignment_dict = assignment.to_dict()
+        
+        # Get files for this assignment from S3
+        try:
+            prefix = f"assignments/{assignment.id}/task/"
+            response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+            
+            if "Contents" in response:
+                files = []
+                for item in response["Contents"]:
+                    # Get the file content from S3
+                    file_response = s3.get_object(Bucket=BUCKET_NAME, Key=item["Key"])
+                    file_content = file_response["Body"].read()
+                    
+                    # Convert to base64
+                    file_base64 = base64.b64encode(file_content).decode('utf-8')
+                    
+                    files.append({
+                        "key": item["Key"],
+                        "size": item["Size"],
+                        "last_modified": item["LastModified"],
+                        "filename": item["Key"].split("/")[-1],
+                        "content": file_base64,
+                        "content_type": file_response.get("ContentType", "application/octet-stream")
+                    })
+                assignment_dict["files"] = files
+            else:
+                assignment_dict["files"] = []
+        except Exception as e:
+            print(f"Error getting files for assignment {assignment.id}: {str(e)}")
+            assignment_dict["files"] = []
+
+        result.append(AssignmentResponse(**assignment_dict))
+
+    return result
 
 
 @router.put("/{assignment_id}", response_model=AssignmentResponse)

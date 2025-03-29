@@ -22,12 +22,22 @@ class AssignmentWithFileCreate(AssignmentCreate):
     file: Optional[UploadFile] = None
 
 
+class AssignmentFile(BaseModel):
+    key: str
+    size: int
+    last_modified: datetime
+    filename: str
+    content: str  # base64 encoded file content
+    content_type: str
+
+
 class AssignmentResponse(AssignmentBase):
     id: int
     course_id: int
     section_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
+    files: List[AssignmentFile] = []
 
     model_config = ConfigDict(from_attributes=True)
 
