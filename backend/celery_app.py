@@ -1,9 +1,12 @@
 from celery import Celery
 from asgiref.sync import async_to_sync
+import os
 
 celery_app = Celery(
-    "my_app", broker="redis://redis:6379/0", backend="redis://redis:6379/0"
-)  # Replace with your broker URL
+    "my_app",
+    broker=os.getenv("REDIS_URL", "redis://redis:6379/0"),
+    backend=os.getenv("REDIS_URL", "redis://redis:6379/0")
+)
 
 
 @celery_app.task

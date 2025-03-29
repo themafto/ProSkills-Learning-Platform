@@ -27,6 +27,7 @@ from backend.roles import UserRole
 from backend.services.token_blacklist import add_to_blacklist
 
 from backend.schemas.user import CreateUserRequest, UserResponse, UserLoginResponseAuth
+from backend.schemas.auth import UserLogin, LoginResponse
 from backend.services.security import generate_password_reset_token
 from backend.services.user_service import check_if_user_exists
 from backend.celery_app import send_reset_password_email_task
@@ -103,42 +104,20 @@ async def create_user(
 
 
 ### ROUTE FOR LOGIN ###
-class UserLogin(BaseModel):  # Create a Pydantic model for JSON request
-    email: EmailStr
-    password: str
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "email": "user@example.com",
-                "password": "yourpassword"
-            }
-        }
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    role: str
-    email: str
-    id: int
-
-
-@router.post("/token", response_model=TokenResponse)
+@router.post("/token", response_model=LoginResponse)
 async def login_for_access_token(
     response: Response,
     login_data: UserLogin,
     db: Session = Depends(get_db)
 ):
     """
-    Login using email and password to get access token.
+    Login using email and password.
     """
     user = authenticate_user(login_data.email, login_data.password, db)
     if not user:
         raise HTTPException(
             status_code=401,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Incorrect email or password"
         )
 
     access_token = create_access_token(
@@ -154,7 +133,7 @@ async def login_for_access_token(
         httponly=True,
         samesite="lax",
         max_age=1200,  # 20 minutes in seconds
-        secure=True    # Only send cookie over HTTPS
+        secure=False   # Set to True in production with HTTPS
     )
     
     response.set_cookie(
@@ -163,16 +142,10 @@ async def login_for_access_token(
         httponly=True,
         samesite="lax",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,  # days to seconds
-        secure=True    # Only send cookie over HTTPS
+        secure=False   # Set to True in production with HTTPS
     )
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "role": user.role,
-        "email": user.email,
-        "id": user.id
-    }
+    return {"message": "Login successful"}
 
 
 @router.post("/refresh", status_code=status.HTTP_200_OK)

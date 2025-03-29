@@ -134,7 +134,7 @@ async def get_assignment(
 
 
 @router.get(
-    "/{assignment_id}/with-progress", response_model=AssignmentWithProgressResponse
+    "/{assignment_id}/progress", response_model=AssignmentWithProgressResponse
 )
 async def get_assignment_with_progress(
     course_id: int,

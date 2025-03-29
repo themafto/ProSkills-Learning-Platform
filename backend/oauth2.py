@@ -1,7 +1,7 @@
 import os
 from datetime import timezone, datetime, timedelta
 
-from fastapi import Depends, HTTPException, Form
+from fastapi import Depends, HTTPException, Cookie
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from pydantic import EmailStr
@@ -11,16 +11,8 @@ from starlette import status
 from backend.dependencies.getdb import get_db
 from backend.models import OurUsers
 from backend.services.token_blacklist import is_blacklisted
-from backend.security.json_bearer import OAuth2PasswordBearerWithJSON
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-oauth2_bearer = OAuth2PasswordBearerWithJSON(
-    tokenUrl="auth/token",
-    scheme_name="OAuth2",
-    description="Enter your email and password as JSON to login",
-    auto_error=True
-)
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 ALGORITHM = os.environ.get("ALGORITHM")
@@ -32,14 +24,12 @@ def authenticate_user(email: EmailStr, password: str, db):
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Incorrect email or password"
         )
     if not bcrypt_context.verify(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Incorrect email or password"
         )
     return user
 
@@ -61,19 +51,25 @@ def create_refresh_token(user_id: int):
     encode.update({"exp": expire})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
-### Checking if the JWT Token of our user is correct ###
-async def get_current_user_jwt(token: str = Depends(oauth2_bearer), db: Session = Depends(get_db)):
+### Get current user from cookie ###
+async def get_current_user_jwt(
+    access_token: str = Cookie(None, alias="access_token"),
+    db: Session = Depends(get_db)
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
+        detail="Could not validate credentials"
     )
+
+    if not access_token:
+        raise credentials_exception
+
     try:
         # Check if token is blacklisted
-        if is_blacklisted(token):
+        if is_blacklisted(access_token):
             raise credentials_exception
 
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
@@ -89,6 +85,7 @@ async def get_current_user_jwt(token: str = Depends(oauth2_bearer), db: Session 
     user = db.query(OurUsers).filter(OurUsers.email == email).first()
     if user is None:
         raise credentials_exception
+        
     return {
         "user_id": user_id,
         "email": email,
