@@ -76,9 +76,13 @@ class CourseProgress(BaseModel):
         }
 
     def completion_percentage(self):
-        if self.total_assignments == 0:
-            return 0.0
+        """Calculate completion percentage with proper type handling"""
         try:
-            return round((self.completed_assignments / self.total_assignments) * 100, 2)
-        except (TypeError, ZeroDivisionError):
+            if not isinstance(self.completed_assignments, (int, float)) or not isinstance(self.total_assignments, (int, float)):
+                return 0.0
+            if self.total_assignments <= 0:
+                return 0.0
+            percentage = (float(self.completed_assignments) / float(self.total_assignments)) * 100.0
+            return float(round(percentage, 2))
+        except Exception:
             return 0.0

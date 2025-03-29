@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, validator
 
 
 class AssignmentProgressBase(BaseModel):
@@ -40,8 +40,8 @@ class AssignmentProgressResponse(AssignmentProgressInDB):
 class CourseProgressBase(BaseModel):
     student_id: int
     course_id: int
-    completed_assignments: int = 0
-    total_assignments: int = 0
+    completed_assignments: int = Field(default=0, ge=0)
+    total_assignments: int = Field(default=0, ge=0)
     last_activity: Optional[datetime] = None
 
 
@@ -50,8 +50,8 @@ class CourseProgressCreate(CourseProgressBase):
 
 
 class CourseProgressUpdate(BaseModel):
-    completed_assignments: Optional[int] = None
-    total_assignments: Optional[int] = None
+    completed_assignments: Optional[int] = Field(default=None, ge=0)
+    total_assignments: Optional[int] = Field(default=None, ge=0)
     last_activity: Optional[datetime] = None
 
 
@@ -63,3 +63,15 @@ class CourseProgressInDB(CourseProgressBase):
 
 class CourseProgressResponse(CourseProgressInDB):
     completion_percentage: float = Field(default=0.0, ge=0.0, le=100.0)
+
+    @validator('completion_percentage', pre=True)
+    def validate_completion_percentage(cls, v):
+        if v is None:
+            return 0.0
+        try:
+            value = float(v)
+            return round(max(0.0, min(100.0, value)), 2)
+        except (TypeError, ValueError):
+            return 0.0
+
+    model_config = ConfigDict(from_attributes=True)
