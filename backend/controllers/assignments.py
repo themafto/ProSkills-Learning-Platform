@@ -64,9 +64,10 @@ async def create_assignment(
                 detail="Section not found or does not belong to this course",
             )
 
-    # Create new assignment
+    # Create new assignment using course_id from URL
     new_assignment = Assignment(
-        **assignment_data.model_dump(exclude={"course_id"}), course_id=course_id
+        **assignment_data.model_dump(),
+        course_id=course_id  # Use course_id from URL parameter
     )
 
     db.add(new_assignment)

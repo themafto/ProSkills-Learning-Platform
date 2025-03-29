@@ -3,7 +3,6 @@ from pydantic import BaseModel
 
 class RatingCreate(BaseModel):
     rating: int
-    course_id: int
 
 
 class RatingResponse(BaseModel):

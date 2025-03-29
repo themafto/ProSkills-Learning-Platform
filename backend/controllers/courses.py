@@ -172,7 +172,7 @@ async def delete_course(
 async def rate_course(
     course_id: int,
     rating_data: RatingCreate,
-    current_user: OurUsers = Depends(get_current_user_jwt),
+    current_user: dict = Depends(get_current_user_jwt),
     db: Session = Depends(get_db),
 ):
     course = db.query(Course).filter(Course.id == course_id).first()
@@ -181,7 +181,7 @@ async def rate_course(
 
     existing_rating = (
         db.query(Rating)
-        .filter(Rating.user_id == current_user.id, Rating.course_id == course_id)
+        .filter(Rating.user_id == current_user["user_id"], Rating.course_id == course_id)
         .first()
     )
 
@@ -189,7 +189,7 @@ async def rate_course(
         raise HTTPException(status_code=400, detail="User already rated this course")
 
     new_rating = Rating(
-        user_id=current_user.id, course_id=course_id, rating=rating_data.rating
+        user_id=current_user["user_id"], course_id=course_id, rating=rating_data.rating
     )
     db.add(new_rating)
     db.commit()

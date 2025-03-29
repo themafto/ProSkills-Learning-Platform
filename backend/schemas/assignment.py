@@ -14,7 +14,6 @@ class AssignmentBase(BaseModel):
 
 
 class AssignmentCreate(AssignmentBase):
-    course_id: int
     section_id: Optional[int] = None
 
 

@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict
 class SectionBase(BaseModel):
     title: str
     order: int
-    course_id: int
 
 
 class SectionCreate(SectionBase):

@@ -19,6 +19,7 @@ router = APIRouter(prefix="/sections", tags=["sections"])
 
 @router.post("", response_model=SectionResponse, status_code=status.HTTP_201_CREATED)
 async def create_section(
+    course_id: int,
     section_data: SectionCreate,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user_jwt),
@@ -32,7 +33,7 @@ async def create_section(
         )
 
     # Check if course exists and user is the teacher of the course
-    course = db.query(Course).filter(Course.id == section_data.course_id).first()
+    course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
@@ -47,8 +48,8 @@ async def create_section(
             detail="Not authorized to create sections for this course",
         )
 
-    # Create the section
-    section = Section(**section_data.model_dump())
+    # Create the section using course_id from URL
+    section = Section(**section_data.model_dump(), course_id=course_id)
 
     try:
         db.add(section)
