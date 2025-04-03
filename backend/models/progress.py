@@ -1,6 +1,7 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.models.basemodel import BaseModel
 
@@ -9,17 +10,25 @@ class AssignmentProgress(BaseModel):
     __tablename__ = "assignment_progress"
 
     id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, index=True, autoincrement=True
+        Integer,
+        primary_key=True,
+        index=True,
+        autoincrement=True,
     )
     student_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("our_users.id"), nullable=False
+        Integer,
+        ForeignKey("our_users.id"),
+        nullable=False,
     )
     assignment_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("assignments.id"), nullable=False
+        Integer,
+        ForeignKey("assignments.id"),
+        nullable=False,
     )
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     submission_file_key: Mapped[str] = mapped_column(
-        String, nullable=True
+        String,
+        nullable=True,
     )  # S3 file key for submission
     score: Mapped[int] = mapped_column(Integer, nullable=True)  # Optional score/grade
     feedback: Mapped[str] = mapped_column(String, nullable=True)  # Teacher feedback
@@ -56,13 +65,20 @@ class CourseProgress(BaseModel):
     __tablename__ = "course_progress"
 
     id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, index=True, autoincrement=True
+        Integer,
+        primary_key=True,
+        index=True,
+        autoincrement=True,
     )
     student_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("our_users.id"), nullable=False
+        Integer,
+        ForeignKey("our_users.id"),
+        nullable=False,
     )
     course_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("courses.id"), nullable=False
+        Integer,
+        ForeignKey("courses.id"),
+        nullable=False,
     )
     completed_assignments: Mapped[int] = mapped_column(Integer, default=0)
     total_assignments: Mapped[int] = mapped_column(Integer, default=0)
@@ -86,11 +102,16 @@ class CourseProgress(BaseModel):
     def completion_percentage(self):
         """Calculate completion percentage with proper type handling"""
         try:
-            if not isinstance(self.completed_assignments, (int, float)) or not isinstance(self.total_assignments, (int, float)):
+            if not isinstance(
+                self.completed_assignments,
+                (int, float),
+            ) or not isinstance(self.total_assignments, (int, float)):
                 return 0.0
             if self.total_assignments <= 0:
                 return 0.0
-            percentage = (float(self.completed_assignments) / float(self.total_assignments)) * 100.0
+            percentage = (
+                float(self.completed_assignments) / float(self.total_assignments)
+            ) * 100.0
             return float(round(percentage, 2))
         except Exception:
             return 0.0

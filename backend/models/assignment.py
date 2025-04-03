@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import Optional
 
-from backend.models.basemodel import BaseModel
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, DateTime, ForeignKey
+
+from backend.models.basemodel import BaseModel
 
 
 class Assignment(BaseModel):
@@ -12,7 +13,8 @@ class Assignment(BaseModel):
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), nullable=False)
     section_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("sections.id"), nullable=True
+        ForeignKey("sections.id"),
+        nullable=True,
     )
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String)

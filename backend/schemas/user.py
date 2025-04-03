@@ -1,5 +1,6 @@
 import re
-from pydantic import BaseModel, Field, field_validator, ConfigDict, EmailStr
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class CreateUserRequest(BaseModel):

@@ -1,29 +1,29 @@
-from typing import List, Optional
+import base64
+import uuid
 from datetime import datetime
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
-from sqlalchemy.orm import Session
-from starlette import status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func
+from sqlalchemy.orm import Session
+from starlette import status
 
+from backend.controllers.filesForCourse import BUCKET_NAME, s3, validate_file
 from backend.dependencies.getdb import get_db
-from backend.models import Course, OurUsers, Section, AssignmentProgress, CourseProgress
+from backend.models import AssignmentProgress, Course, CourseProgress, OurUsers, Section
 from backend.models.assignment import Assignment
 from backend.models.comment import Comment
 from backend.oauth2 import get_current_user_jwt
 from backend.schemas.assignment import (
     AssignmentCreate,
-    AssignmentWithCommentsResponse,
     AssignmentResponse,
     AssignmentUpdate,
-    AssignmentWithProgressResponse,
+    AssignmentWithCommentsResponse,
     AssignmentWithFileCreate,
+    AssignmentWithProgressResponse,
 )
 from backend.schemas.file import FileUploadResponse
-from backend.controllers.filesForCourse import validate_file, s3, BUCKET_NAME
-import uuid
-import base64
 
 router = APIRouter(
     prefix="/courses/{course_id}/assignments",
@@ -48,13 +48,14 @@ async def create_assignment(
         .filter(Course.id == course_id)
         .filter(
             (Course.teacher_id == current_user["user_id"])
-            | (current_user.get("role") == "admin")
+            | (current_user.get("role") == "admin"),
         )
         .first()
     )
     if not course:
         raise HTTPException(
-            status_code=404, detail="Course not found or you don't have permission."
+            status_code=404,
+            detail="Course not found or you don't have permission.",
         )
 
     # Validate section_id if provided
@@ -62,7 +63,8 @@ async def create_assignment(
         section = (
             db.query(Section)
             .filter(
-                Section.id == assignment_data.section_id, Section.course_id == course_id
+                Section.id == assignment_data.section_id,
+                Section.course_id == course_id,
             )
             .first()
         )
@@ -71,33 +73,36 @@ async def create_assignment(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Section not found or does not belong to this course",
             )
-    
+
     # Automatically set order value based on existing assignments
     # If section_id is provided, get the max order in that section
     # Otherwise, get the max order in assignments without a section
     if assignment_data.section_id:
-        max_order_result = db.query(
-            func.max(Assignment.order)
-        ).filter(
-            Assignment.course_id == course_id,
-            Assignment.section_id == assignment_data.section_id
-        ).scalar()
+        max_order_result = (
+            db.query(func.max(Assignment.order))
+            .filter(
+                Assignment.course_id == course_id,
+                Assignment.section_id == assignment_data.section_id,
+            )
+            .scalar()
+        )
     else:
-        max_order_result = db.query(
-            func.max(Assignment.order)
-        ).filter(
-            Assignment.course_id == course_id,
-            Assignment.section_id.is_(None)
-        ).scalar()
+        max_order_result = (
+            db.query(func.max(Assignment.order))
+            .filter(Assignment.course_id == course_id, Assignment.section_id.is_(None))
+            .scalar()
+        )
 
     # Set order to max_order + 1 or 1 if no assignments exist
     new_order = (max_order_result or 0) + 1
-    
+
     # Create new assignment using course_id from URL and calculated order
     new_assignment = Assignment(
-        **assignment_data.model_dump(exclude={"order"}),  # Exclude existing order if provided
+        **assignment_data.model_dump(
+            exclude={"order"},
+        ),  # Exclude existing order if provided
         order=new_order,
-        course_id=course_id
+        course_id=course_id,
     )
 
     db.add(new_assignment)
@@ -107,7 +112,8 @@ async def create_assignment(
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=500, detail=f"Error creating assignment: {str(e)}"
+            status_code=500,
+            detail=f"Error creating assignment: {str(e)}",
         )
 
     # Update total assignments count in all student progress records
@@ -122,24 +128,28 @@ async def create_assignment(
             )
             .first()
         )
-        
+
         if not course_progress:
             course_progress = CourseProgress(
                 student_id=student.id,
                 course_id=course_id,
                 completed_assignments=0,
-                total_assignments=1
+                total_assignments=1,
             )
             db.add(course_progress)
         else:
             course_progress.total_assignments += 1
-        
+
         db.commit()
 
     return new_assignment
 
 
-@router.post("/with/file", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
+@router.post(
+    "/with/file",
+    status_code=status.HTTP_201_CREATED,
+    response_model=AssignmentResponse,
+)
 async def create_assignment_with_file(
     course_id: int,
     title: str = Form(...),
@@ -162,13 +172,14 @@ async def create_assignment_with_file(
         .filter(Course.id == course_id)
         .filter(
             (Course.teacher_id == current_user["user_id"])
-            | (current_user.get("role") == "admin")
+            | (current_user.get("role") == "admin"),
         )
         .first()
     )
     if not course:
         raise HTTPException(
-            status_code=404, detail="Course not found or you don't have permission."
+            status_code=404,
+            detail="Course not found or you don't have permission.",
         )
 
     # Convert section_id=0 to None
@@ -179,9 +190,7 @@ async def create_assignment_with_file(
     if section_id:
         section = (
             db.query(Section)
-            .filter(
-                Section.id == section_id, Section.course_id == course_id
-            )
+            .filter(Section.id == section_id, Section.course_id == course_id)
             .first()
         )
         if not section:
@@ -189,24 +198,25 @@ async def create_assignment_with_file(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Section not found or does not belong to this course",
             )
-            
+
     # Automatically set order value based on existing assignments
     # If section_id is provided, get the max order in that section
     # Otherwise, get the max order in assignments without a section
     if section_id:
-        max_order_result = db.query(
-            func.max(Assignment.order)
-        ).filter(
-            Assignment.course_id == course_id,
-            Assignment.section_id == section_id
-        ).scalar()
+        max_order_result = (
+            db.query(func.max(Assignment.order))
+            .filter(
+                Assignment.course_id == course_id,
+                Assignment.section_id == section_id,
+            )
+            .scalar()
+        )
     else:
-        max_order_result = db.query(
-            func.max(Assignment.order)
-        ).filter(
-            Assignment.course_id == course_id,
-            Assignment.section_id.is_(None)
-        ).scalar()
+        max_order_result = (
+            db.query(func.max(Assignment.order))
+            .filter(Assignment.course_id == course_id, Assignment.section_id.is_(None))
+            .scalar()
+        )
 
     # Set order to max_order + 1 or 1 if no assignments exist
     new_order = (max_order_result or 0) + 1
@@ -219,7 +229,7 @@ async def create_assignment_with_file(
         teacher_comments=teacher_comments,
         section_id=section_id,
         order=new_order,
-        course_id=course_id
+        course_id=course_id,
     )
 
     db.add(new_assignment)
@@ -229,7 +239,8 @@ async def create_assignment_with_file(
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=500, detail=f"Error creating assignment: {str(e)}"
+            status_code=500,
+            detail=f"Error creating assignment: {str(e)}",
         )
 
     # Handle file upload if provided
@@ -265,18 +276,18 @@ async def create_assignment_with_file(
             )
             .first()
         )
-        
+
         if not course_progress:
             course_progress = CourseProgress(
                 student_id=student.id,
                 course_id=course_id,
                 completed_assignments=0,
-                total_assignments=1
+                total_assignments=1,
             )
             db.add(course_progress)
         else:
             course_progress.total_assignments += 1
-        
+
         db.commit()
 
     # Prepare response with file information
@@ -291,21 +302,25 @@ async def create_assignment_with_file(
         "order": new_assignment.order,
         "created_at": new_assignment.created_at,
         "updated_at": new_assignment.updated_at,
-        "files": []
+        "files": [],
     }
 
     # Add the uploaded file to the response if it exists
     if file_key:
         try:
             response = s3.head_object(Bucket=BUCKET_NAME, Key=file_key)
-            assignment_dict["files"] = [{
-                "key": file_key,
-                "size": response["ContentLength"],
-                "last_modified": response["LastModified"],
-                "filename": file_key.split("/")[-1]
-            }]
+            assignment_dict["files"] = [
+                {
+                    "key": file_key,
+                    "size": response["ContentLength"],
+                    "last_modified": response["LastModified"],
+                    "filename": file_key.split("/")[-1],
+                },
+            ]
         except Exception as e:
-            print(f"Error getting file info for assignment {new_assignment.id}: {str(e)}")
+            print(
+                f"Error getting file info for assignment {new_assignment.id}: {str(e)}",
+            )
             assignment_dict["files"] = []
 
     return AssignmentResponse(**assignment_dict)
@@ -323,7 +338,8 @@ async def get_assignment(
     )
     if user is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
         )
 
     assignment = (
@@ -345,9 +361,7 @@ async def get_assignment(
     return AssignmentWithCommentsResponse(**assignment_dict)
 
 
-@router.get(
-    "/{assignment_id}/progress", response_model=AssignmentWithProgressResponse
-)
+@router.get("/{assignment_id}/progress", response_model=AssignmentWithProgressResponse)
 async def get_assignment_with_progress(
     course_id: int,
     assignment_id: int,
@@ -387,7 +401,7 @@ async def get_assignment_with_progress(
                 "submission_file_key": progress.submission_file_key,
                 "score": progress.score,
                 "feedback": progress.feedback,
-            }
+            },
         )
     else:
         assignment_dict.update(
@@ -396,7 +410,7 @@ async def get_assignment_with_progress(
                 "submission_file_key": None,
                 "score": None,
                 "feedback": None,
-            }
+            },
         )
 
     return AssignmentWithProgressResponse(**assignment_dict)
@@ -470,23 +484,25 @@ async def get_course_assignments(
             "order": assignment.order,
             "created_at": assignment.created_at,
             "updated_at": assignment.updated_at,
-            "files": []
+            "files": [],
         }
-        
+
         # Get files for this assignment from S3
         try:
             prefix = f"assignments/{assignment.id}/task/"
             response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
-            
+
             if "Contents" in response:
                 files = []
                 for item in response["Contents"]:
-                    files.append({
-                        "key": item["Key"],
-                        "size": item["Size"],
-                        "last_modified": item["LastModified"],
-                        "filename": item["Key"].split("/")[-1]
-                    })
+                    files.append(
+                        {
+                            "key": item["Key"],
+                            "size": item["Size"],
+                            "last_modified": item["LastModified"],
+                            "filename": item["Key"].split("/")[-1],
+                        },
+                    )
                 assignment_dict["files"] = files
             else:
                 assignment_dict["files"] = []
@@ -532,7 +548,7 @@ async def update_assignment(
     # Check if user is the teacher of the course or admin
     course = db.query(Course).filter(Course.id == course_id).first()
     if current_user.get("role") != "admin" and course.teacher_id != current_user.get(
-        "user_id"
+        "user_id",
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -625,23 +641,25 @@ async def update_assignment(
         "order": assignment.order,
         "created_at": assignment.created_at,
         "updated_at": assignment.updated_at,
-        "files": []
+        "files": [],
     }
 
     # Get files for this assignment from S3
     try:
         prefix = f"assignments/{assignment_id}/task/"
         response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
-        
+
         if "Contents" in response:
             files = []
             for item in response["Contents"]:
-                files.append({
-                    "key": item["Key"],
-                    "size": item["Size"],
-                    "last_modified": item["LastModified"],
-                    "filename": item["Key"].split("/")[-1]
-                })
+                files.append(
+                    {
+                        "key": item["Key"],
+                        "size": item["Size"],
+                        "last_modified": item["LastModified"],
+                        "filename": item["Key"].split("/")[-1],
+                    },
+                )
             assignment_dict["files"] = files
     except Exception as e:
         print(f"Error getting files for assignment {assignment_id}: {str(e)}")
@@ -674,13 +692,13 @@ async def delete_assignment(
     # Check if user is the teacher of the course or admin
     course = db.query(Course).filter(Course.id == course_id).first()
     if current_user.get("role") != "admin" and course.teacher_id != current_user.get(
-        "user_id"
+        "user_id",
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete assignments for this course",
         )
-        
+
     # Delete associated files from S3
     try:
         # 1. Delete task files
@@ -690,7 +708,7 @@ async def delete_assignment(
             for item in response["Contents"]:
                 s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
                 print(f"Deleted task file: {item['Key']}")
-                
+
         # 2. Delete student submissions
         submissions_prefix = f"assignments/{assignment_id}/submissions/"
         response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=submissions_prefix)
@@ -765,7 +783,7 @@ async def download_assignment_file(
     try:
         # Get file from S3
         response = s3.get_object(Bucket=BUCKET_NAME, Key=file_key)
-        
+
         def iterfile():
             yield from response["Body"]
 
@@ -773,11 +791,11 @@ async def download_assignment_file(
             iterfile(),
             media_type=response.get("ContentType", "application/octet-stream"),
             headers={
-                "Content-Disposition": f'attachment; filename="{file_key.split("/")[-1]}"'
-            }
+                "Content-Disposition": f'attachment; filename="{file_key.split("/")[-1]}"',
+            },
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File not found: {str(e)}"
+            detail=f"File not found: {str(e)}",
         )

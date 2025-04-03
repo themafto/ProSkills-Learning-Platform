@@ -1,31 +1,30 @@
 """
 Module for handling file operations in courses, including uploads, downloads, and management.
 """
+
 import os
-from typing import List, Optional
-import uuid
 import re
+import uuid
 from datetime import datetime
+from typing import List, Optional
 
 import boto3
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form, Query
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from starlette import status
 
 from backend.dependencies.getdb import get_db
+from backend.models import Assignment, Course, Enrollment, OurUsers
 from backend.oauth2 import get_current_user_jwt
-from backend.models import Course, Assignment, Enrollment
 from backend.schemas.file import (
-    FileResponse,
-    FileUploadResponse,
     FileDeleteResponse,
 )
-
-from backend.models import OurUsers
-from backend.models.enrollment import Enrollment
-
-from dotenv import load_dotenv
+from backend.schemas.file import FileResponse as FileResponseSchema
+from backend.schemas.file import (
+    FileUploadResponse,
+)
 
 load_dotenv()  # take environment variables from .env.
 
@@ -36,7 +35,7 @@ s3 = boto3.client(
     aws_access_key_id=os.getenv("ACCESS_KEY_ID"),
     aws_secret_access_key=os.getenv("SECRET_ACCESS_KEY"),
 )
-BUCKET_NAME = os.getenv("BUCKET_NAME", "files-for-team-project")  
+BUCKET_NAME = os.getenv("BUCKET_NAME", "files-for-team-project")
 TEMP_DOWNLOAD_DIR = "temp_downloads"
 
 os.makedirs(TEMP_DOWNLOAD_DIR, exist_ok=True)
@@ -119,7 +118,7 @@ def check_course_ownership(db: Session, user_id: int, course_id: int) -> bool:
     )
 
 
-@router.get("", response_model=List[FileResponse])
+@router.get("", response_model=List[FileResponseSchema])
 async def get_all_files(
     course_id: Optional[int] = None,
     current_user: dict = Depends(get_current_user_jwt),
@@ -137,7 +136,8 @@ async def get_all_files(
             course = db.query(Course).filter(Course.id == course_id).first()
             if not course:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Course not found",
                 )
 
             # Verify user has permission to view course files
@@ -171,12 +171,12 @@ async def get_all_files(
         files = []
         for item in response.get("Contents", []):
             files.append(
-                FileResponse(
+                FileResponseSchema(
                     key=item["Key"],
                     size=item["Size"],
                     last_modified=item["LastModified"],
                     etag=item["ETag"],
-                )
+                ),
             )
         return files
 
@@ -187,9 +187,7 @@ async def get_all_files(
         )
 
 
-@router.post(
-    "", response_model=FileUploadResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("", response_model=FileUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_file(
     file: UploadFile = File(...),
     course_id: Optional[int] = Form(None),
@@ -211,12 +209,15 @@ async def upload_file(
             course = db.query(Course).filter(Course.id == course_id).first()
             if not course:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Course not found",
                 )
 
             # Verify user has permission to upload to this course
             if user_role not in ["teacher", "admin"] and not check_course_ownership(
-                db, user_id, course_id
+                db,
+                user_id,
+                course_id,
             ):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -282,14 +283,16 @@ async def upload_assignment_file(
         assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
         if not assignment:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assignment not found",
             )
 
         # Check course access permissions
         course = db.query(Course).filter(Course.id == assignment.course_id).first()
         if not course:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course not found",
             )
 
         # For tasks, only teacher can upload
@@ -311,7 +314,8 @@ async def upload_assignment_file(
         )
 
         return FileUploadResponse(
-            message="Assignment file uploaded successfully", file_key=key
+            message="Assignment file uploaded successfully",
+            file_key=key,
         )
 
     except HTTPException:
@@ -349,14 +353,16 @@ async def submit_assignment(
         assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
         if not assignment:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assignment not found",
             )
 
         # Get the associated course and verify enrollment
         course = db.query(Course).filter(Course.id == assignment.course_id).first()
         if not course:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course not found",
             )
 
         # For students, check if they're enrolled in the course
@@ -393,7 +399,8 @@ async def submit_assignment(
         # db.commit()
 
         return FileUploadResponse(
-            message="Assignment submission successful", file_key=key
+            message="Assignment submission successful",
+            file_key=key,
         )
 
     except HTTPException:
@@ -406,7 +413,8 @@ async def submit_assignment(
 
 
 @router.get(
-    "/assignments/{assignment_id}/task", response_model=List[FileResponse]
+    "/assignments/{assignment_id}/task",
+    response_model=List[FileResponseSchema],
 )
 async def get_assignment_files(
     assignment_id: int,
@@ -424,14 +432,16 @@ async def get_assignment_files(
         assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
         if not assignment:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assignment not found",
             )
 
         # Get the associated course
         course = db.query(Course).filter(Course.id == assignment.course_id).first()
         if not course:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course not found",
             )
 
         # Verify access permissions
@@ -455,12 +465,12 @@ async def get_assignment_files(
         files = []
         for item in response.get("Contents", []):
             files.append(
-                FileResponse(
+                FileResponseSchema(
                     key=item["Key"],
                     size=item["Size"],
                     last_modified=item["LastModified"],
                     etag=item["ETag"],
-                )
+                ),
             )
         return files
 
@@ -472,7 +482,8 @@ async def get_assignment_files(
 
 
 @router.get(
-    "/assignments/{assignment_id}/submissions", response_model=List[FileResponse]
+    "/assignments/{assignment_id}/submissions",
+    response_model=List[FileResponseSchema],
 )
 async def get_assignment_submissions(
     assignment_id: int,
@@ -491,14 +502,16 @@ async def get_assignment_submissions(
         assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
         if not assignment:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assignment not found",
             )
 
         # Get the associated course
         course = db.query(Course).filter(Course.id == assignment.course_id).first()
         if not course:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course not found",
             )
 
         # Teachers and admins can see all submissions, students can only see their own
@@ -538,12 +551,12 @@ async def get_assignment_submissions(
         files = []
         for item in response.get("Contents", []):
             files.append(
-                FileResponse(
+                FileResponseSchema(
                     key=item["Key"],
                     size=item["Size"],
                     last_modified=item["LastModified"],
                     etag=item["ETag"],
-                )
+                ),
             )
         return files
 
@@ -557,7 +570,7 @@ async def get_assignment_submissions(
 def validate_file_access(
     db: Session,
     file_key: str,
-    current_user: dict
+    current_user: dict,
 ) -> tuple[Course, bool]:
     """
     Validate user's access to a file.
@@ -579,7 +592,7 @@ def validate_file_access(
     except (IndexError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid file key format"
+            detail="Invalid file key format",
         )
 
     # Get course
@@ -587,7 +600,7 @@ def validate_file_access(
     if not course:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found"
+            detail="Course not found",
         )
 
     # Check access
@@ -599,10 +612,11 @@ def validate_file_access(
     if not (is_teacher or is_admin or is_enrolled):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this file"
+            detail="Not authorized to access this file",
         )
 
     return course, is_teacher or is_admin
+
 
 def get_file_from_s3(file_key: str) -> tuple[StreamingResponse, str]:
     """
@@ -625,29 +639,31 @@ def get_file_from_s3(file_key: str) -> tuple[StreamingResponse, str]:
         def iterfile():
             yield from response["Body"]
 
-        return StreamingResponse(
-            iterfile(),
-            media_type=content_type,
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
-        ), filename
+        return (
+            StreamingResponse(
+                iterfile(),
+                media_type=content_type,
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            ),
+            filename,
+        )
     except s3.exceptions.NoSuchKey:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="File not found"
+            detail="File not found",
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"S3 service error: {str(e)}"
+            detail=f"S3 service error: {str(e)}",
         )
+
 
 @router.get("/download/{file_key:path}")
 async def download_file(
     file_key: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user_jwt)
+    current_user: dict = Depends(get_current_user_jwt),
 ) -> StreamingResponse:
     """
     Download a file from S3.
@@ -675,19 +691,17 @@ async def download_file(
         return StreamingResponse(
             iterfile(),
             media_type=content_type,
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     except s3.exceptions.NoSuchKey:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="File not found"
+            detail="File not found",
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"S3 service error: {str(e)}"
+            detail=f"S3 service error: {str(e)}",
         )
 
 
@@ -708,9 +722,10 @@ async def delete_file(
         # Check if file exists
         try:
             s3.head_object(Bucket=BUCKET_NAME, Key=file_key)
-        except Exception as e:
+        except Exception as error:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"File not found: {str(error)}",
             )
 
         user_id = current_user.get("user_id")
@@ -754,7 +769,9 @@ async def delete_file(
 
                 # If not admin, verify teacher owns the course
                 if user_role != "admin" and not check_course_ownership(
-                    db, user_id, course_id
+                    db,
+                    user_id,
+                    course_id,
                 ):
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
@@ -764,10 +781,10 @@ async def delete_file(
         # Delete the file
         try:
             s3.delete_object(Bucket=BUCKET_NAME, Key=file_key)
-        except boto3.exceptions.Boto3Error as e:
+        except boto3.exceptions.Boto3Error as error:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"S3 service error: {str(e)}",
+                detail=f"S3 service error: {str(error)}",
             )
 
         return FileDeleteResponse(message="File deleted successfully")

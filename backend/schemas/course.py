@@ -1,10 +1,10 @@
 from typing import List, Optional
 
-from pydantic import ConfigDict, BaseModel
+from pydantic import BaseModel, ConfigDict
 from pydantic.v1 import validator
 
-from backend.schemas.user import TeacherOfCourse
 from backend.schemas.section import SectionWithAssignments
+from backend.schemas.user import TeacherOfCourse
 
 
 class CourseBase(BaseModel):
@@ -13,8 +13,8 @@ class CourseBase(BaseModel):
     category: Optional[str] = None
     rating: Optional[int] = None
     lessons_count: int
-    lessons_duration: int  ### in minutes for example ###
-    files: List[str] = None  ### for URLs to files(pdf)
+    lessons_duration: int  # in minutes for example
+    files: List[str] = None  # for URLs to files(pdf)
 
 
 class CourseResponse(BaseModel):
@@ -27,7 +27,7 @@ class CourseResponse(BaseModel):
     ratings_count: int
     lessons_count: int
     lessons_duration: int
-    files: Optional[List[str]] = None  ### Updated
+    files: Optional[List[str]] = None  # Updated
     teacher: Optional[TeacherOfCourse] = None
     sections: Optional[List[SectionWithAssignments]] = None
 

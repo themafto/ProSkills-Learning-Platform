@@ -1,6 +1,5 @@
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.models.basemodel import BaseModel
 from backend.models.enrollment import Enrollment
@@ -11,7 +10,10 @@ class OurUsers(BaseModel):
     __tablename__ = "our_users"
 
     id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, index=True, autoincrement=True
+        Integer,
+        primary_key=True,
+        index=True,
+        autoincrement=True,
     )
     email = Column(String, unique=True, index=True, nullable=False)
     first_name = Column(String, nullable=False)
@@ -23,6 +25,8 @@ class OurUsers(BaseModel):
     reset_token_expires_at = Column(DateTime(timezone=True), nullable=True)
 
     courses = relationship(
-        "Course", secondary=Enrollment.__table__, back_populates="students"
+        "Course",
+        secondary=Enrollment.__table__,
+        back_populates="students",
     )
     courses_teaching = relationship("Course", back_populates="teacher")

@@ -1,7 +1,8 @@
-from dotenv import load_dotenv
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from pydantic import BaseModel, EmailStr
 import os
+
+from dotenv import load_dotenv
+from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
+from pydantic import BaseModel, EmailStr
 
 load_dotenv()
 

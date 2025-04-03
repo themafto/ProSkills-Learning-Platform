@@ -1,8 +1,8 @@
 import os
-from datetime import timezone, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, HTTPException, Cookie
-from jose import jwt, JWTError
+from fastapi import Cookie, Depends, HTTPException
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
@@ -18,23 +18,30 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 ALGORITHM = os.environ.get("ALGORITHM")
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", 1))
 
+
 ### Check if user is in our DATABASE ###
 def authenticate_user(email: EmailStr, password: str, db):
     user = db.query(OurUsers).filter(OurUsers.email == email).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password"
+            detail="Incorrect email or password",
         )
     if not bcrypt_context.verify(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password"
+            detail="Incorrect email or password",
         )
     return user
 
+
 ### Create a JWT token for user ###
-def create_access_token(email: EmailStr, user_id: int, user_role: str, expires_delta: timedelta) -> str:
+def create_access_token(
+    email: EmailStr,
+    user_id: int,
+    user_role: str,
+    expires_delta: timedelta,
+) -> str:
     encode = {
         "sub": email,
         "id": user_id,
@@ -45,20 +52,22 @@ def create_access_token(email: EmailStr, user_id: int, user_role: str, expires_d
     encode.update({"exp": expire})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 def create_refresh_token(user_id: int):
     encode = {"id": user_id, "token_type": "refresh_token"}
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     encode.update({"exp": expire})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 ### Get current user from cookie ###
 async def get_current_user_jwt(
     access_token: str = Cookie(None, alias="access_token"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials"
+        detail="Could not validate credentials",
     )
 
     if not access_token:
@@ -85,7 +94,7 @@ async def get_current_user_jwt(
     user = db.query(OurUsers).filter(OurUsers.email == email).first()
     if user is None:
         raise credentials_exception
-        
+
     return {
         "user_id": user_id,
         "email": email,

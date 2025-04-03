@@ -1,36 +1,32 @@
 import hashlib
-from datetime import timedelta, datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status, Form
-
+from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Response, status
+from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from fastapi.security import OAuth2PasswordRequestForm
-
-
+from backend.celery_app import send_reset_password_email_task
 from backend.dependencies.getdb import get_db
 from backend.models.ourusers import OurUsers
 from backend.oauth2 import (
-    bcrypt_context,
-    authenticate_user,
-    create_access_token,
-    get_current_user_jwt,
-    create_refresh_token,
-    SECRET_KEY,
     ALGORITHM,
     REFRESH_TOKEN_EXPIRE_DAYS,
+    SECRET_KEY,
+    authenticate_user,
+    bcrypt_context,
+    create_access_token,
+    create_refresh_token,
+    get_current_user_jwt,
 )
 from backend.roles import UserRole
-from backend.services.token_blacklist import add_to_blacklist
-
-from backend.schemas.user import CreateUserRequest, UserResponse, UserLoginResponseAuth
-from backend.schemas.auth import UserLogin, LoginResponse
+from backend.schemas.auth import LoginResponse, UserLogin
+from backend.schemas.user import CreateUserRequest, UserLoginResponseAuth, UserResponse
 from backend.services.security import generate_password_reset_token
+from backend.services.token_blacklist import add_to_blacklist
 from backend.services.user_service import check_if_user_exists
-from backend.celery_app import send_reset_password_email_task
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -84,7 +80,8 @@ async def logout(
 
 @router.post("/users", status_code=status.HTTP_201_CREATED)
 async def create_user(
-    create_user_request: CreateUserRequest, db: Session = Depends(get_db)
+    create_user_request: CreateUserRequest,
+    db: Session = Depends(get_db),
 ):
     check_if_user_exists(db, create_user_request.email)
 
@@ -107,22 +104,22 @@ async def create_user(
 async def login_for_access_token(
     response: Response,
     login_data: UserLogin,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Login using email and password.
     """
     user = authenticate_user(login_data.email, login_data.password, db)
     if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Incorrect email or password"
-        )
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
 
     access_token = create_access_token(
-        user.email, user.id, user.role, timedelta(minutes=20)
+        user.email,
+        user.id,
+        user.role,
+        timedelta(minutes=20),
     )
-    
+
     refresh_token = create_refresh_token(user.id)
 
     # Set cookies with development-friendly settings
@@ -133,9 +130,9 @@ async def login_for_access_token(
         samesite="lax",
         max_age=1200,  # 20 minutes in seconds
         secure=False,  # Allow HTTP in development
-        path="/"       # Ensure cookie is sent to all endpoints
+        path="/",  # Ensure cookie is sent to all endpoints
     )
-    
+
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -143,7 +140,7 @@ async def login_for_access_token(
         samesite="lax",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,  # days to seconds
         secure=False,  # Allow HTTP in development
-        path="/"       # Ensure cookie is sent to all endpoints
+        path="/",  # Ensure cookie is sent to all endpoints
     )
 
     return {"message": "Login successful"}
@@ -165,9 +162,7 @@ async def refresh_token_get(
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid refresh token payload")
 
-        user = (
-            db.query(OurUsers).filter(OurUsers.id == user_id).first()
-        ) 
+        user = db.query(OurUsers).filter(OurUsers.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -187,13 +182,9 @@ async def refresh_token_get(
         return {"message": "Refresh successful"}
 
     except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=401, detail="Refresh token expired"
-        ) 
+        raise HTTPException(status_code=401, detail="Refresh token expired")
     except jwt.JWTError:
-        raise HTTPException(
-            status_code=401, detail="Invalid refresh token"
-        ) 
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
 @router.post("/register/teacher", status_code=status.HTTP_201_CREATED)
@@ -228,7 +219,10 @@ async def register_teacher(
     return create_user_model
 
 
-@router.post("/users/admin", status_code=status.HTTP_201_CREATED)  # Changed from /create/admin to /users/admin
+@router.post(
+    "/users/admin",
+    status_code=status.HTTP_201_CREATED,
+)  # Changed from /create/admin to /users/admin
 async def register_admin(
     create_user_request: CreateUserRequest,
     db: Session = Depends(get_db),
@@ -276,7 +270,8 @@ async def request_password_reset(email: str, db: Session = Depends(get_db)):
     db.commit()
 
     send_reset_password_email_task.delay(
-        email, token
+        email,
+        token,
     )  # Used .delay() to send to Celery
     return {"message": "Password reset instructions sent to your email"}
 

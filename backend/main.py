@@ -1,14 +1,14 @@
-from fastapi import FastAPI, Depends
+from fastapi import Depends, FastAPI
 from sqlalchemy.orm import Session
 
 from backend.controllers import (
+    assignments,
     auth,
     courses,
-    students,
-    assignments,
     filesForCourse,
-    sections,
     progress,
+    sections,
+    students,
 )
 from backend.database import Base, engine
 from backend.dependencies.getdb import get_db

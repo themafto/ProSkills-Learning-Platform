@@ -1,6 +1,7 @@
 """
 Module for handling course and assignment progress tracking.
 """
+
 from datetime import datetime
 from typing import List, Optional
 
@@ -9,16 +10,16 @@ from sqlalchemy.orm import Session
 from starlette import status
 
 from backend.dependencies.getdb import get_db
-from backend.models import Assignment, Course, AssignmentProgress, CourseProgress
+from backend.models import Assignment, AssignmentProgress, Course, CourseProgress
 from backend.models.enrollment import Enrollment
 from backend.oauth2 import get_current_user_jwt
+from backend.schemas.assignment import AssignmentWithProgressResponse
 from backend.schemas.progress import (
     AssignmentProgressCreate,
     AssignmentProgressResponse,
     AssignmentProgressUpdate,
     CourseProgressResponse,
 )
-from backend.schemas.assignment import AssignmentWithProgressResponse
 
 router = APIRouter(prefix="/progress", tags=["progress"])
 
@@ -94,7 +95,7 @@ def update_course_progress(db: Session, student_id: int, course_id: int):
             .filter(
                 Assignment.course_id == course_id,
                 AssignmentProgress.student_id == student_id,
-                AssignmentProgress.is_completed == True,
+                AssignmentProgress.is_completed is True,
             )
             .count()
         )
@@ -132,7 +133,8 @@ async def create_or_update_assignment_progress(
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found",
         )
 
     # Check if student is enrolled in the course
@@ -172,7 +174,7 @@ async def create_or_update_assignment_progress(
         progress = AssignmentProgress(
             student_id=progress_data.student_id,
             assignment_id=assignment_id,
-            **progress_data.model_dump(exclude={"student_id", "assignment_id"})
+            **progress_data.model_dump(exclude={"student_id", "assignment_id"}),
         )
 
         # If marked as complete, set completed_at time
@@ -217,15 +219,17 @@ async def get_assignment_progress(
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found",
         )
 
     # Get progress
-    progress = get_assignment_progress(db, student_id, assignment_id)
+    progress = get_student_assignment_progress(db, student_id, assignment_id)
 
     if not progress:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Progress not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Progress not found",
         )
 
     return progress
@@ -257,7 +261,8 @@ async def update_assignment_progress(
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found",
         )
 
     # Check if student is enrolled in the course
@@ -268,11 +273,12 @@ async def update_assignment_progress(
         )
 
     # Get progress
-    progress = get_assignment_progress(db, student_id, assignment_id)
+    progress = get_student_assignment_progress(db, student_id, assignment_id)
 
     if not progress:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Progress not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Progress not found",
         )
 
     # Update progress
@@ -302,7 +308,8 @@ async def update_assignment_progress(
 
 
 @router.get(
-    "/courses/{course_id}/student/{student_id}", response_model=CourseProgressResponse
+    "/courses/{course_id}/student/{student_id}",
+    response_model=CourseProgressResponse,
 )
 async def get_course_progress(
     course_id: int,
@@ -324,7 +331,8 @@ async def get_course_progress(
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
         )
 
     # Check if student is enrolled in the course
@@ -356,7 +364,8 @@ async def get_assignments_with_progress(
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
         )
 
     # Check if user is teacher of the course or enrolled
@@ -377,7 +386,7 @@ async def get_assignments_with_progress(
     # Get progress for each assignment
     result = []
     for assignment in assignments:
-        progress = get_assignment_progress(db, user_id, assignment.id)
+        progress = get_student_assignment_progress(db, user_id, assignment.id)
 
         assignment_dict = assignment.to_dict()
 
@@ -388,7 +397,7 @@ async def get_assignments_with_progress(
                     "submission_file_key": progress.submission_file_key,
                     "score": progress.score,
                     "feedback": progress.feedback,
-                }
+                },
             )
         else:
             assignment_dict.update(
@@ -397,7 +406,7 @@ async def get_assignments_with_progress(
                     "submission_file_key": None,
                     "score": None,
                     "feedback": None,
-                }
+                },
             )
 
         result.append(AssignmentWithProgressResponse(**assignment_dict))
@@ -421,7 +430,8 @@ async def mark_assignment_complete(
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found",
         )
 
     # Check if student is enrolled in the course
@@ -432,7 +442,7 @@ async def mark_assignment_complete(
         )
 
     # Get progress or create new
-    progress = get_assignment_progress(db, user_id, assignment_id)
+    progress = get_student_assignment_progress(db, user_id, assignment_id)
 
     if not progress:
         progress = AssignmentProgress(
@@ -456,7 +466,11 @@ async def mark_assignment_complete(
     return progress
 
 
-def get_assignment_progress(db: Session, student_id: int, assignment_id: int) -> Optional[AssignmentProgress]:
+def get_student_assignment_progress(
+    db: Session,
+    student_id: int,
+    assignment_id: int,
+) -> Optional[AssignmentProgress]:
     """
     Get progress for a specific assignment.
 
@@ -468,8 +482,12 @@ def get_assignment_progress(db: Session, student_id: int, assignment_id: int) ->
     Returns:
         Optional[AssignmentProgress]: Progress record if found, None otherwise
     """
-    return db.query(AssignmentProgress).filter(
-        AssignmentProgress.student_id == student_id,
-        AssignmentProgress.assignment_id == assignment_id,
-        AssignmentProgress.is_completed is True  # Fixed comparison
-    ).first()
+    return (
+        db.query(AssignmentProgress)
+        .filter(
+            AssignmentProgress.student_id == student_id,
+            AssignmentProgress.assignment_id == assignment_id,
+            AssignmentProgress.is_completed is True,
+        )
+        .first()
+    )

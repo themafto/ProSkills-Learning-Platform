@@ -1,0 +1,29 @@
+name: Backend CI Test
+
+on:
+  push:
+    branches:
+      - assigments-to-courses
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 with Docker Compose
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.MY_EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.MY_EC2_KEY }}
+          script: |
+            cd ~/Team-1-ProSkills-BE
+            git fetch origin
+            git checkout -b my-ci-test origin/my-ci-test || git checkout my-ci-test
+            git pull origin my-ci-test
+            docker-compose pull
+            docker-compose down
+            docker-compose up -d --build

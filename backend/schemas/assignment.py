@@ -1,7 +1,8 @@
-from typing import Optional, List
-from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from typing import List, Optional
+
 from fastapi import UploadFile
+from pydantic import BaseModel, ConfigDict
 
 from backend.schemas.comment import CommentResponse
 

@@ -1,29 +1,27 @@
-from typing import List
 import os
+from typing import List
 
-import sqlalchemy
 import boto3
+import sqlalchemy
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends
 from sqlalchemy.orm import Session, joinedload
-
 from starlette import status
 
-
 from backend.dependencies.getdb import get_db
-from backend.models import Course, OurUsers, Assignment
+from backend.models import Assignment, Course, OurUsers
 from backend.models.enrollment import Enrollment
-from backend.models.rating import Rating
 from backend.models.progress import CourseProgress
+from backend.models.rating import Rating
 from backend.oauth2 import get_current_user_jwt
 from backend.schemas.course import (
     CourseCreate,
-    CourseUpdate,
-    CourseResponse,
     CourseInfo,
+    CourseResponse,
+    CourseUpdate,
 )
-from backend.schemas.rating import RatingResponse, RatingCreate
-from backend.schemas.user import UserResponse, TeacherOfCourse
+from backend.schemas.rating import RatingCreate, RatingResponse
+from backend.schemas.user import TeacherOfCourse, UserResponse
 
 router = APIRouter(prefix="/courses", tags=["courses"])
 
@@ -36,9 +34,7 @@ s3 = boto3.client(
 BUCKET_NAME = os.getenv("BUCKET_NAME", "files-for-team-project")
 
 
-@router.post(
-    "", response_model=CourseResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("", response_model=CourseResponse, status_code=status.HTTP_201_CREATED)
 async def create_course(
     create_course_request: CourseCreate,
     db: Session = Depends(get_db),
@@ -46,12 +42,13 @@ async def create_course(
 ):
     if current_user.get("role") not in ["teacher", "admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized",
         )
 
     course = Course(
         **create_course_request.model_dump(),
-        teacher_id=current_user.get("user_id"),  ### get an id of teacher
+        teacher_id=current_user.get("user_id"),  # get an id of teacher
     )
 
     db.add(course)
@@ -68,7 +65,9 @@ async def create_course(
 
 
 @router.get(
-    "/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK
+    "/{course_id}",
+    response_model=CourseResponse,
+    status_code=status.HTTP_200_OK,
 )
 async def get_course_by_id(course_id: int, db: Session = Depends(get_db)):
 
@@ -81,7 +80,8 @@ async def get_course_by_id(course_id: int, db: Session = Depends(get_db)):
     )
     if not course:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
         )
 
     course_dict = course.to_dict()
@@ -90,7 +90,9 @@ async def get_course_by_id(course_id: int, db: Session = Depends(get_db)):
 
 
 @router.put(
-    "/{course_id}", response_model=CourseResponse, status_code=status.HTTP_200_OK
+    "/{course_id}",
+    response_model=CourseResponse,
+    status_code=status.HTTP_200_OK,
 )
 async def update_course(
     course_id: int,
@@ -101,16 +103,18 @@ async def update_course(
 
     if current_user.get("role") not in ["teacher", "admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access Denied"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access Denied",
         )
 
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
         )
 
-    ###  Authorization by ownership ###
+    # Authorization by ownership
     if course.teacher_id != current_user.get("user_id"):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -144,7 +148,7 @@ async def get_all_courses(db: Session = Depends(get_db)):
                     category=course.category,
                     rating=course.rating,
                     teacher_id=course.teacher_id,
-                )
+                ),
             )
         return courses_info
 
@@ -162,15 +166,17 @@ async def delete_course(
 
     if current_user.get("role") not in ["teacher", "admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
         )
 
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:  # Check if the course exists
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
         )
-    
+
     # Delete all course files from S3
     try:
         # 1. Delete course-level files
@@ -180,9 +186,11 @@ async def delete_course(
             for item in response["Contents"]:
                 s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
                 print(f"Deleted course file: {item['Key']}")
-                
+
         # 2. Get all assignments in the course and delete their files
-        assignments = db.query(Assignment).filter(Assignment.course_id == course_id).all()
+        assignments = (
+            db.query(Assignment).filter(Assignment.course_id == course_id).all()
+        )
         for assignment in assignments:
             # Delete assignment task files
             assignment_prefix = f"assignments/{assignment.id}/task/"
@@ -191,7 +199,7 @@ async def delete_course(
                 for item in response["Contents"]:
                     s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
                     print(f"Deleted assignment file: {item['Key']}")
-            
+
             # Delete student submissions for this assignment
             submissions_prefix = f"assignments/{assignment.id}/submissions/"
             response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=submissions_prefix)
@@ -199,7 +207,7 @@ async def delete_course(
                 for item in response["Contents"]:
                     s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
                     print(f"Deleted submission file: {item['Key']}")
-                    
+
     except Exception as e:
         print(f"Error deleting files for course {course_id}: {str(e)}")
         # Continue with course deletion even if file deletion fails
@@ -207,13 +215,13 @@ async def delete_course(
     try:
         # First, delete all enrollments for this course to avoid foreign key constraint violation
         db.query(Enrollment).filter(Enrollment.course_id == course_id).delete()
-        
+
         # Delete any progress records for this course
         db.query(CourseProgress).filter(CourseProgress.course_id == course_id).delete()
-        
+
         # Delete ratings for this course if any
         db.query(Rating).filter(Rating.course_id == course_id).delete()
-        
+
         # Delete the course (will cascade delete assignments due to relationship)
         db.delete(course)
         db.commit()
@@ -221,7 +229,7 @@ async def delete_course(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error deleting course: {str(e)}"
+            detail=f"Error deleting course: {str(e)}",
         )
 
     return {"message": "Course deleted successfully"}
@@ -240,7 +248,10 @@ async def rate_course(
 
     existing_rating = (
         db.query(Rating)
-        .filter(Rating.user_id == current_user["user_id"], Rating.course_id == course_id)
+        .filter(
+            Rating.user_id == current_user["user_id"],
+            Rating.course_id == course_id,
+        )
         .first()
     )
 
@@ -248,7 +259,9 @@ async def rate_course(
         raise HTTPException(status_code=400, detail="User already rated this course")
 
     new_rating = Rating(
-        user_id=current_user["user_id"], course_id=course_id, rating=rating_data.rating
+        user_id=current_user["user_id"],
+        course_id=course_id,
+        rating=rating_data.rating,
     )
     db.add(new_rating)
     db.commit()

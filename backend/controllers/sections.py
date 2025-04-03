@@ -36,12 +36,12 @@ async def create_section(
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Course not found",
         )
 
     # Check if user is the teacher of the course
     if current_user.get("role") != "admin" and course.teacher_id != current_user.get(
-        "user_id"
+        "user_id",
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -74,7 +74,7 @@ async def get_section(
     section = db.query(Section).filter(Section.id == section_id).first()
     if not section:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Section not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Section not found",
         )
 
     # Get the associated course to check permissions
@@ -112,7 +112,7 @@ async def get_course_sections(
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Course not found",
         )
 
     # Check if user has permission to view (enrolled in course, teacher, or admin)
@@ -155,14 +155,14 @@ async def update_section(
     section = db.query(Section).filter(Section.id == section_id).first()
     if not section:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Section not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Section not found",
         )
 
     # Get the associated course
     course = db.query(Course).filter(Course.id == section.course_id).first()
 
     if current_user.get("role") != "admin" and course.teacher_id != current_user.get(
-        "user_id"
+        "user_id",
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -197,7 +197,7 @@ async def delete_section(
     section = db.query(Section).filter(Section.id == section_id).first()
     if not section:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Section not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Section not found",
         )
 
     # Get the associated course
@@ -205,7 +205,7 @@ async def delete_section(
 
     # Check if user is the teacher of the course or admin
     if current_user.get("role") != "admin" and course.teacher_id != current_user.get(
-        "user_id"
+        "user_id",
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

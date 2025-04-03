@@ -707,11 +707,11 @@ A robust backend system for an educational platform built with FastAPI, providin
 
 ### 1. Authentication & Authorization
 - **Email-based Authentication**: Secure login system using email and password
-- **JWT Token System**: 
+- **JWT Token System**:
   - Access tokens (20 minutes validity)
   - Refresh tokens for extended sessions
   - Token blacklisting for secure logout
-- **Role-based Access Control**: 
+- **Role-based Access Control**:
   - Students
   - Teachers
   - Administrators

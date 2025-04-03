@@ -1,4 +1,5 @@
 import os
+
 from starlette.middleware.cors import CORSMiddleware
 
 
@@ -10,11 +11,11 @@ def setup_cors(app):
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
-    
+
     # Get additional origins from environment
     env_origins = os.environ.get("ALLOWED_ORIGINS", "").split(",")
     env_origins = [origin.strip() for origin in env_origins if origin.strip()]
-    
+
     # Combine all origins
     all_origins = list(set(dev_origins + env_origins))
 

@@ -1,5 +1,9 @@
 from typing import List, Optional
+
 from pydantic import BaseModel, ConfigDict
+
+# Import needed for forward reference
+from backend.schemas.assignment import AssignmentInDB
 
 
 class SectionBase(BaseModel):
@@ -31,8 +35,5 @@ class SectionWithAssignments(SectionInDB):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-# This will be imported in assignment.py
-from backend.schemas.assignment import AssignmentInDB
 
 SectionWithAssignments.model_rebuild()

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, TIMESTAMP, text
+from sqlalchemy import TIMESTAMP, Column, text
 
 from backend.database import Base
 
@@ -7,10 +7,14 @@ class BaseModel(Base):
     __abstract__ = True
 
     created_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
     )
     updated_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
     )
 
     def to_dict(self) -> dict:
