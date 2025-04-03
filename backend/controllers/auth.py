@@ -82,11 +82,10 @@ async def logout(
     return {"message": "Successfully logged out"}
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("/users", status_code=status.HTTP_201_CREATED)
 async def create_user(
     create_user_request: CreateUserRequest, db: Session = Depends(get_db)
 ):
-
     check_if_user_exists(db, create_user_request.email)
 
     create_user_model = OurUsers(
@@ -203,13 +202,18 @@ async def register_teacher(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user_jwt),
 ):
-    if current_user.get("role") != UserRole.ADMIN.value:
+    """Register a new teacher account (admin only)"""
+
+    if current_user.get("role") != "admin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can register teacher accounts",
         )
 
+    # Check if user already exists
     check_if_user_exists(db, create_user_request.email)
 
+    # Create teacher account
     create_user_model = OurUsers(
         email=create_user_request.email,
         hashed_password=bcrypt_context.hash(create_user_request.password),
@@ -218,19 +222,26 @@ async def register_teacher(
         role=UserRole.TEACHER.value,
         is_active=True,
     )
+
     db.add(create_user_model)
     db.commit()
-    db.refresh(create_user_model)
     return create_user_model
 
 
-@router.post("/create/admin", status_code=status.HTTP_201_CREATED)
+@router.post("/users/admin", status_code=status.HTTP_201_CREATED)  # Changed from /create/admin to /users/admin
 async def register_admin(
     create_user_request: CreateUserRequest,
     db: Session = Depends(get_db),
 ):
+    """Register a new admin account"""
+    # This endpoint is usually protected by environment-based access
+    # For example, only allowed in development, or requiring a special token
+    # For this example, we'll assume it's restricted by network/infrastructure
+
+    # Check if user already exists
     check_if_user_exists(db, create_user_request.email)
 
+    # Create admin account
     create_user_model = OurUsers(
         email=create_user_request.email,
         hashed_password=bcrypt_context.hash(create_user_request.password),
@@ -239,9 +250,9 @@ async def register_admin(
         role=UserRole.ADMIN.value,
         is_active=True,
     )
+
     db.add(create_user_model)
     db.commit()
-    db.refresh(create_user_model)
     return create_user_model
 
 

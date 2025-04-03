@@ -1,6 +1,8 @@
 from typing import List
+import os
 
 import sqlalchemy
+import boto3
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends
 from sqlalchemy.orm import Session, joinedload
@@ -9,9 +11,10 @@ from starlette import status
 
 
 from backend.dependencies.getdb import get_db
-from backend.models import Course, OurUsers
+from backend.models import Course, OurUsers, Assignment
 from backend.models.enrollment import Enrollment
 from backend.models.rating import Rating
+from backend.models.progress import CourseProgress
 from backend.oauth2 import get_current_user_jwt
 from backend.schemas.course import (
     CourseCreate,
@@ -24,9 +27,17 @@ from backend.schemas.user import UserResponse, TeacherOfCourse
 
 router = APIRouter(prefix="/courses", tags=["courses"])
 
+# Initialize S3 client
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=os.getenv("ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("SECRET_ACCESS_KEY"),
+)
+BUCKET_NAME = os.getenv("BUCKET_NAME", "files-for-team-project")
+
 
 @router.post(
-    "/create_course", response_model=CourseResponse, status_code=status.HTTP_201_CREATED
+    "", response_model=CourseResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_course(
     create_course_request: CourseCreate,
@@ -154,16 +165,64 @@ async def delete_course(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
-    course = db.query(Course).filter(Course.id == course_id)
-    if (
-        not db.query(Course).filter(Course.id == course_id).first()
-    ):  # Check if the course exists
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:  # Check if the course exists
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Course not found"
         )
+    
+    # Delete all course files from S3
+    try:
+        # 1. Delete course-level files
+        course_prefix = f"course_{course_id}/"
+        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=course_prefix)
+        if "Contents" in response:
+            for item in response["Contents"]:
+                s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
+                print(f"Deleted course file: {item['Key']}")
+                
+        # 2. Get all assignments in the course and delete their files
+        assignments = db.query(Assignment).filter(Assignment.course_id == course_id).all()
+        for assignment in assignments:
+            # Delete assignment task files
+            assignment_prefix = f"assignments/{assignment.id}/task/"
+            response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=assignment_prefix)
+            if "Contents" in response:
+                for item in response["Contents"]:
+                    s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
+                    print(f"Deleted assignment file: {item['Key']}")
+            
+            # Delete student submissions for this assignment
+            submissions_prefix = f"assignments/{assignment.id}/submissions/"
+            response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=submissions_prefix)
+            if "Contents" in response:
+                for item in response["Contents"]:
+                    s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
+                    print(f"Deleted submission file: {item['Key']}")
+                    
+    except Exception as e:
+        print(f"Error deleting files for course {course_id}: {str(e)}")
+        # Continue with course deletion even if file deletion fails
 
-    course.delete()
-    db.commit()
+    try:
+        # First, delete all enrollments for this course to avoid foreign key constraint violation
+        db.query(Enrollment).filter(Enrollment.course_id == course_id).delete()
+        
+        # Delete any progress records for this course
+        db.query(CourseProgress).filter(CourseProgress.course_id == course_id).delete()
+        
+        # Delete ratings for this course if any
+        db.query(Rating).filter(Rating.course_id == course_id).delete()
+        
+        # Delete the course (will cascade delete assignments due to relationship)
+        db.delete(course)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting course: {str(e)}"
+        )
 
     return {"message": "Course deleted successfully"}
 

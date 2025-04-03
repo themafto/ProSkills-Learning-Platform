@@ -16,31 +16,17 @@ from backend.schemas.course import CourseResponse
 from backend.schemas.user import UserLoginResponse
 
 router = APIRouter(
-    prefix="/student",
-    tags=["student"]
+    prefix="/students",
+    tags=["students"]
 )
 
 
-@router.put("/add_to_course/{course_id}")
-async def add_to_course(
+@router.post("/enrollments/courses/{course_id}")
+async def enroll_in_course(
     course_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user_jwt)
-) -> dict:
-    """
-    Enroll a student in a course.
-
-    Args:
-        course_id: ID of the course to enroll in
-        db: Database session
-        current_user: Current authenticated user
-
-    Returns:
-        dict: Success message
-
-    Raises:
-        HTTPException: If course doesn't exist, user not found, or already enrolled
-    """
+    current_user: dict = Depends(get_current_user_jwt)) -> dict:
+    
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(
@@ -63,10 +49,7 @@ async def add_to_course(
     ).first()
 
     if existing_enrollment:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User is already enrolled in this course"
-        )
+        return {"message": "User is already enrolled in this course"}
 
     new_enrollment = Enrollment(user_id=student.id, course_id=course_id)
     db.add(new_enrollment)
@@ -76,16 +59,16 @@ async def add_to_course(
 
 
 @router.get(
-    "/courses/{course_id}",
+    "/teaching/courses/{course_id}/students",
     response_model=List[UserLoginResponse],
     status_code=status.HTTP_200_OK,
 )
-async def get_my_students(
+async def get_course_students(
     course_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user_jwt),
 ):
-
+    """Get all students enrolled in a specific course taught by the current teacher"""
     if current_user.get("role") != "teacher":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -122,12 +105,47 @@ async def get_my_students(
 
 
 @router.get(
-    "/my_courses", response_model=List[CourseResponse], status_code=status.HTTP_200_OK
+    "/enrollments/courses/{course_id}",
+    status_code=status.HTTP_200_OK
 )
-async def get_my_courses(
-    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user_jwt)
+async def check_enrollment_status(
+    course_id: int,
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user_jwt)
 ):
+    """Check if the current user is enrolled in a specific course"""
+    user_id = current_user.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user token. Missing user ID."
+        )
 
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found"
+        )
+
+    enrollment = db.query(Enrollment).filter(
+        Enrollment.user_id == user_id,
+        Enrollment.course_id == course_id
+    ).first()
+
+    return {"is_enrolled": enrollment is not None}
+
+
+@router.get(
+    "/enrollments/courses",
+    response_model=List[CourseResponse], 
+    status_code=status.HTTP_200_OK
+)
+async def get_enrolled_courses(
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user_jwt)
+):
+    """Get all courses the current student is enrolled in"""
     student_id = current_user.get("user_id")
     if not student_id:
         raise HTTPException(
@@ -149,14 +167,15 @@ async def get_my_courses(
 
 
 @router.get(
-    "/getTeachersCourses",
+    "/teaching/courses",
     response_model=List[CourseResponse],
     status_code=status.HTTP_200_OK,
 )
-async def get_teacher_courses(
-    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user_jwt)
+async def get_teaching_courses(
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user_jwt)
 ):
-
+    """Get all courses the current teacher is teaching"""
     if current_user.get("role") != "teacher":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -175,14 +194,16 @@ async def get_teacher_courses(
     return courses
 
 
-@router.delete("/{student_id}/{course_id}")
-async def delete_student(
+@router.delete(
+    "/enrollments/courses/{course_id}/students/{student_id}"
+)
+async def remove_student_enrollment(
     course_id: int,
     student_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user_jwt),
 ):
-
+    """Remove a student's enrollment from a course"""
     if current_user.get("role") not in ["teacher", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"

@@ -188,7 +188,7 @@ async def get_all_files(
 
 
 @router.post(
-    "/upload", response_model=FileUploadResponse, status_code=status.HTTP_201_CREATED
+    "", response_model=FileUploadResponse, status_code=status.HTTP_201_CREATED
 )
 async def upload_file(
     file: UploadFile = File(...),

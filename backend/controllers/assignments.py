@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, 
 from sqlalchemy.orm import Session
 from starlette import status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 
 from backend.dependencies.getdb import get_db
 from backend.models import Course, OurUsers, Section, AssignmentProgress, CourseProgress
@@ -70,11 +71,33 @@ async def create_assignment(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Section not found or does not belong to this course",
             )
+    
+    # Automatically set order value based on existing assignments
+    # If section_id is provided, get the max order in that section
+    # Otherwise, get the max order in assignments without a section
+    if assignment_data.section_id:
+        max_order_result = db.query(
+            func.max(Assignment.order)
+        ).filter(
+            Assignment.course_id == course_id,
+            Assignment.section_id == assignment_data.section_id
+        ).scalar()
+    else:
+        max_order_result = db.query(
+            func.max(Assignment.order)
+        ).filter(
+            Assignment.course_id == course_id,
+            Assignment.section_id.is_(None)
+        ).scalar()
 
-    # Create new assignment using course_id from URL
+    # Set order to max_order + 1 or 1 if no assignments exist
+    new_order = (max_order_result or 0) + 1
+    
+    # Create new assignment using course_id from URL and calculated order
     new_assignment = Assignment(
-        **assignment_data.model_dump(),
-        course_id=course_id  # Use course_id from URL parameter
+        **assignment_data.model_dump(exclude={"order"}),  # Exclude existing order if provided
+        order=new_order,
+        course_id=course_id
     )
 
     db.add(new_assignment)
@@ -124,7 +147,6 @@ async def create_assignment_with_file(
     due_date: Optional[datetime] = Form(None),
     teacher_comments: Optional[str] = Form(None),
     section_id: Optional[int] = Form(None),
-    order: Optional[int] = Form(0),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user_jwt),
@@ -167,6 +189,27 @@ async def create_assignment_with_file(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Section not found or does not belong to this course",
             )
+            
+    # Automatically set order value based on existing assignments
+    # If section_id is provided, get the max order in that section
+    # Otherwise, get the max order in assignments without a section
+    if section_id:
+        max_order_result = db.query(
+            func.max(Assignment.order)
+        ).filter(
+            Assignment.course_id == course_id,
+            Assignment.section_id == section_id
+        ).scalar()
+    else:
+        max_order_result = db.query(
+            func.max(Assignment.order)
+        ).filter(
+            Assignment.course_id == course_id,
+            Assignment.section_id.is_(None)
+        ).scalar()
+
+    # Set order to max_order + 1 or 1 if no assignments exist
+    new_order = (max_order_result or 0) + 1
 
     # Create new assignment
     new_assignment = Assignment(
@@ -174,8 +217,8 @@ async def create_assignment_with_file(
         description=description,
         due_date=due_date,
         teacher_comments=teacher_comments,
-        section_id=section_id,  # Now section_id will be None if it was 0
-        order=order,
+        section_id=section_id,
+        order=new_order,
         course_id=course_id
     )
 
@@ -190,17 +233,18 @@ async def create_assignment_with_file(
         )
 
     # Handle file upload if provided
+    file_key = None  # Track the uploaded file key
     if file and file.filename:  # Only process if file is provided and has a filename
         try:
             # Validate file
             file_content = await validate_file(file)
 
             # Create a structured key for assignments with uniqueness
-            key = f"assignments/{new_assignment.id}/task/{uuid.uuid4().hex}_{file.filename}"
+            file_key = f"assignments/{new_assignment.id}/task/{uuid.uuid4().hex}_{file.filename}"
 
             s3.put_object(
                 Bucket=BUCKET_NAME,
-                Key=key,
+                Key=file_key,
                 Body=file_content,
                 ContentType=file.content_type,
             )
@@ -250,23 +294,19 @@ async def create_assignment_with_file(
         "files": []
     }
 
-    # Get files for this assignment from S3 if any were uploaded
-    try:
-        prefix = f"assignments/{new_assignment.id}/task/"
-        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
-        
-        if "Contents" in response:
-            files = []
-            for item in response["Contents"]:
-                files.append({
-                    "key": item["Key"],
-                    "size": item["Size"],
-                    "last_modified": item["LastModified"],
-                    "filename": item["Key"].split("/")[-1]
-                })
-            assignment_dict["files"] = files
-    except Exception as e:
-        print(f"Error getting files for assignment {new_assignment.id}: {str(e)}")
+    # Add the uploaded file to the response if it exists
+    if file_key:
+        try:
+            response = s3.head_object(Bucket=BUCKET_NAME, Key=file_key)
+            assignment_dict["files"] = [{
+                "key": file_key,
+                "size": response["ContentLength"],
+                "last_modified": response["LastModified"],
+                "filename": file_key.split("/")[-1]
+            }]
+        except Exception as e:
+            print(f"Error getting file info for assignment {new_assignment.id}: {str(e)}")
+            assignment_dict["files"] = []
 
     return AssignmentResponse(**assignment_dict)
 
@@ -640,6 +680,27 @@ async def delete_assignment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete assignments for this course",
         )
+        
+    # Delete associated files from S3
+    try:
+        # 1. Delete task files
+        task_prefix = f"assignments/{assignment_id}/task/"
+        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=task_prefix)
+        if "Contents" in response:
+            for item in response["Contents"]:
+                s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
+                print(f"Deleted task file: {item['Key']}")
+                
+        # 2. Delete student submissions
+        submissions_prefix = f"assignments/{assignment_id}/submissions/"
+        response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=submissions_prefix)
+        if "Contents" in response:
+            for item in response["Contents"]:
+                s3.delete_object(Bucket=BUCKET_NAME, Key=item["Key"])
+                print(f"Deleted submission file: {item['Key']}")
+    except Exception as e:
+        print(f"Error deleting files for assignment {assignment_id}: {str(e)}")
+        # Continue with assignment deletion even if file deletion fails
 
     # Delete assignment
     db.delete(assignment)

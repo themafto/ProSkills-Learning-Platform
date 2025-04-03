@@ -11,7 +11,7 @@ class AssignmentBase(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     teacher_comments: Optional[str] = None
-    order: Optional[int] = 0
+    order: Optional[int] = None
 
 
 class AssignmentCreate(AssignmentBase):
